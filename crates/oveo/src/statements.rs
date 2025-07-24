@@ -104,12 +104,12 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for Statements<'a> {
             return;
         }
 
-        // Insert statements after any existing `import` statements
+        // Insert statements before the first non-import statement
         let index = program
             .body
             .iter()
-            .rposition(|stmt| matches!(stmt, Statement::ImportDeclaration(_)))
-            .map_or(0, |i| i + 1);
+            .position(|stmt| !matches!(stmt, Statement::ImportDeclaration(_)))
+            .unwrap_or(program.body.len());
 
         program.body.splice(index..index, stmts.drain(..));
     }
