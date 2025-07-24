@@ -28,6 +28,7 @@ on:
     branches:
       - master
 concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build-napi:
@@ -91,27 +92,26 @@ jobs:
           - host: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             architecture: arm64
-          - host: windows-latest
-            target: x86_64-pc-windows-msvc
-            architecture: x64
-          - host: windows-11-arm
-            target: aarch64-pc-windows-msvc
-            architecture: arm64
+          # Adds "\r" when reading files on windows?!
+          # - host: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   architecture: x64
+          # - host: windows-11-arm
+          #   target: aarch64-pc-windows-msvc
+          #   architecture: arm64
           - host: macos-latest
             target: aarch64-apple-darwin
             architecture: arm64
-          - host: macos-latest
-            target: x86_64-apple-darwin
-            architecture: x64
-        node:
-          - 22
-          - 24
+          # Bun is broken on x86_64 macos
+          # - host: macos-latest
+          #   target: x86_64-apple-darwin
+          #   architecture: x64
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 24
           architecture: ${{ matrix.settings.architecture }}
       - uses: oven-sh/setup-bun@v2
       - uses: extractions/setup-just@v3

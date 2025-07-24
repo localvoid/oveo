@@ -15,12 +15,13 @@ on:
   push:
     paths:
       - packages/**
-      - !crates/**
-      - !packages/@oveo/optimizer/**
-      - !tests/optimizer/**
+      - "!crates/**"
+      - "!packages/@oveo/optimizer/**"
+      - "!tests/optimizer/**"
     branches:
       - master
 concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   publish:

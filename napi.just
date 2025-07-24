@@ -20,12 +20,12 @@ update-versions version:
   just _pkg-set-version {{PKG_DIR}}/packages/win32-arm64-msvc {{version}}
   just _pkg-set-version {{PKG_DIR}}/packages/win32-x64-msvc {{version}}
 
-publish:
-  just update-versions $(jq -r .version {{PKG_DIR}}/package.json)
-  just _pkg-publish {{PKG_DIR}}/packages/darwin-arm64
-  just _pkg-publish {{PKG_DIR}}/packages/darwin-x64
-  just _pkg-publish {{PKG_DIR}}/packages/linux-arm64-gnu
-  just _pkg-publish {{PKG_DIR}}/packages/linux-x64-gnu
-  just _pkg-publish {{PKG_DIR}}/packages/win32-arm64-msvc
-  just _pkg-publish {{PKG_DIR}}/packages/win32-x64-msvc
-  just _pkg-publish {{PKG_DIR}}/
+publish *NPM_FLAGS:
+  just napi update-versions $(jq -r .version {{PKG_DIR}}/package.json)
+  just _pkg-publish {{PKG_DIR}}/packages/darwin-arm64 {{NPM_FLAGS}}
+  just _pkg-publish {{PKG_DIR}}/packages/darwin-x64 {{NPM_FLAGS}}
+  just _pkg-publish {{PKG_DIR}}/packages/linux-arm64-gnu {{NPM_FLAGS}}
+  just _pkg-publish {{PKG_DIR}}/packages/linux-x64-gnu {{NPM_FLAGS}}
+  just _pkg-publish {{PKG_DIR}}/packages/win32-arm64-msvc {{NPM_FLAGS}}
+  just _pkg-publish {{PKG_DIR}}/packages/win32-x64-msvc {{NPM_FLAGS}}
+  just _pkg-publish {{PKG_DIR}}/ {{NPM_FLAGS}}
