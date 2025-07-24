@@ -1,0 +1,10 @@
+{
+  "test": {
+    "exports": {
+      "val": {
+        "type": "const",
+        "value": "abc"
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+/examples/**/dist
+/packages/**/dist
+
+.rsync-filter
+.DS_Store
+
+# Rust
+/target/
+
+# NAPI-rs
+/napi-artifacts/
+
+# JS
+node_modules
+*.mm_profdata
+*.tsbuildinfo
+
+# Editors
+/.idea/
+/.vscode/
+!/.vscode/settings.json

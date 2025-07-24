@@ -1,0 +1,21 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    "group:allNonMajor",
+    ":preserveSemverRanges",
+    ":disablePeerDependencies",
+    "npm:unpublishSafe"
+  ],
+  "timezone": "Etc/UTC",
+  "schedule": [
+    "* 0-4 * * 1-3"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "commitMessagePrefix": "chore: ",
+  "commitMessageAction": "bump up",
+  "commitMessageTopic": "{{depName}} version",
+  "ignoreDeps": []
+}

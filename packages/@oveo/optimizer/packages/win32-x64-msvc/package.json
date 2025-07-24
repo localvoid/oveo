@@ -1,0 +1,29 @@
+{
+  "name": "@oveo/optimizer-win32-x64-msvc",
+  "version": "0.0.1",
+  "cpu": [
+    "x64"
+  ],
+  "main": "oveo-optimizer.win32-x64-msvc.node",
+  "files": [
+    "oveo-optimizer.win32-x64-msvc.node"
+  ],
+  "description": "oveo optimizer NAPI",
+  "keywords": [
+    "oveo"
+  ],
+  "author": "Boris Kaul <localvoid@gmail.com> (https://github.com/localvoid)",
+  "homepage": "https://github.com/localvoid/oveo",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/localvoid/oveo.git"
+  },
+  "bugs": "https://github.com/localvoid/oveo/issues",
+  "os": [
+    "win32"
+  ]
+}
