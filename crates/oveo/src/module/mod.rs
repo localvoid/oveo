@@ -1,4 +1,4 @@
-use oxc_allocator::{Address, Allocator, GetAddress, Vec as ArenaVec};
+use oxc_allocator::{Address, Allocator, GetAddress, TakeIn, Vec as ArenaVec};
 use oxc_ast::{AstBuilder, NONE, ast::*};
 use oxc_semantic::{Scoping, SymbolFlags};
 use oxc_span::SPAN;
@@ -360,19 +360,18 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                         &self.hoist_stack,
                     );
                 }
+                if self.options.dedupe {
+                    *expr = annotate(
+                        expr.take_in(ctx.ast.allocator),
+                        Annotation::dedupe(),
+                        &mut ctx.ast,
+                    );
+                }
                 let Some(hoist_scope_id) = s.hoist_scope_id else {
                     return;
                 };
 
                 let uid = ctx.generate_uid("_HOISTED_", hoist_scope_id, SymbolFlags::ConstVariable);
-
-                let mut expr2 = uid.create_read_expression(ctx);
-                std::mem::swap(expr, &mut expr2);
-
-                // Dedupe expressions when they are hoisted to the program scope.
-                if self.options.dedupe {
-                    expr2 = annotate(expr2, Annotation::dedupe(), &mut ctx.ast);
-                }
 
                 // const _HOISTED_ = expr;
                 let hoisted_var_decl = ctx.ast.declaration_variable(
@@ -388,11 +387,13 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                             NONE,
                             false,
                         ),
-                        Some(expr2),
+                        Some(expr.take_in(ctx.ast.allocator)),
                         false,
                     )),
                     false,
                 );
+                *expr = uid.create_read_expression(ctx);
+
                 if let Some(scope) = self.hoist_stack.iter().find(|x| x.scope_id == hoist_scope_id)
                 {
                     if let HoistStackEntryKind::Scope(scope) = &scope.kind {
