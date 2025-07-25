@@ -12,13 +12,10 @@ It is designed for bundlers that support hooks for transformations that work on 
 - Add oveo plugin to a Vite config:
 
 ```js
+import { defineConfig } from "vite";
 import { oveo } from "@oveo/vite";
 
-export default {
-  input: "src/main.js",
-  output: {
-    file: "bundle.js",
-  },
+export default defineConfig({
   plugins: [
     // By default, all optimizations are disabled.
     oveo({
@@ -30,7 +27,7 @@ export default {
       },
       externs: {
         import: [/* */],
-        inline: true,
+        inlineConstValues: true,
       },
       renameProperties: {
         pattern: "_$",
@@ -38,7 +35,7 @@ export default {
       },
     }),
   ]
-};
+});
 ```
 
 ## Optimizations
@@ -46,8 +43,8 @@ export default {
 - [Expression Hoisting](#expression-hoisting)
 - [Expression Deduplication](#expression-deduplication)
 - [Hoisting Globals](#hoisting-globals)
-- [Inline Extern Values](#inline-extern-values)
 - [Singletons](#singletons)
+- [Inline Extern Values](#inline-extern-values)
 - [Rename Properties](#rename-properties)
 
 ### Expression Hoisting
@@ -289,6 +286,12 @@ function from(data) {
 }
 ```
 
+### Singletons
+
+This optimization works during chunk rendering phase and deduplicates objects like `new TextEncoder()` with an assumption that there are no mutations to this objects and this objects will be referential equal when they are referenced in the chunk file.
+
+Currently, there are only two singleton objects: `new TextEncoder()` and `new TextDecoder()`.
+
 ### Inline Extern Values
 
 This optimization works during module transformation phase and inlines constant values declared in the [externs](#externs) file.
@@ -343,12 +346,6 @@ console.log({ "key": "May contain any JSON values" });
 ```
 
 And after minification (constant evaluation), class names will have an [interned](https://en.wikipedia.org/wiki/String_interning) type.
-
-### Singletons
-
-This optimization works during chunk rendering phase and deduplicates objects like `new TextEncoder()` with an assumption that there are no mutations to this objects and this objects will be referential equal when they are referenced in the chunk file.
-
-Currently, there are only two singleton objects: `new TextEncoder()` and `new TextDecoder()`.
 
 ### Rename Properties
 
