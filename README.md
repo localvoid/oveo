@@ -53,7 +53,7 @@ By default, there is only one scope (program level scope). Scopes can be created
 ```json
 {
   "@scope/modulename": {
-    "export": {
+    "exports": {
       "myscope": {
         "arguments": [{ "scope": true }]
       },
@@ -192,7 +192,7 @@ function test() {
 
 ### Expression Deduplication
 
-This optimization works during chunk rendering phase and deduplicates expressions marked with the [intrinsic](#intrinsic-functions) function `dedupe(expr)`.
+This optimization works during chunk rendering phase and deduplicates expressions marked with the [intrinsic](#intrinsic-functions) function `dedupe(expr)` or when expression is [hoisted](#expression-hoisting).
 
 - Deduped expressions shouldn't have any side effects.
 - Deduped expressions doesn't provide referential equality (expressions from different chunks aren't deduplicated).
@@ -501,7 +501,7 @@ Extern file example:
  - `Int8Array`
  - `Int16Array`
  - `Int32Array`
- - `Intl`,
+ - `Intl`
    - `getCanonicalLocales`
    - `supportedValuesOf`
  - `Iterator`
@@ -575,7 +575,7 @@ Extern file example:
    - `NaN`
    - `NEGATIVE_INFINITY`
    - `POSITIVE_INFINITY`
- - `Object`,
+ - `Object`
    - `prototype`
      - `hasOwnProperty`
      - `isPrototypeOf`
@@ -603,7 +603,7 @@ Extern file example:
    - `seal`
    - `setPrototypeOf`
    - `values`
- - `Promise`,
+ - `Promise`
    - `all`
    - `allSettled`
    - `any`
@@ -615,7 +615,7 @@ Extern file example:
  - `Proxy`
  - `RangeError`
  - `ReferenceError`
- - `Reflect`,
+ - `Reflect`
    - `apply`
    - `construct`
    - `defineProperty`
