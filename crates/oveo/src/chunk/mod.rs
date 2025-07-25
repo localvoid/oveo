@@ -176,6 +176,7 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, '_> {
                                                     "_GLOBAL_",
                                                     SymbolFlags::ConstVariable,
                                                 );
+                                                self.globals_symbols.insert(uid.symbol_id, v);
                                                 self.statements.insert_top_level_statement(
                                                     create_static_member_decl(
                                                         &uid,

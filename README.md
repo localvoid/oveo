@@ -568,6 +568,10 @@ Extern file example:
    - `NEGATIVE_INFINITY`
    - `POSITIVE_INFINITY`
  - `Object`,
+   - `prototype`
+     - `hasOwnProperty`
+     - `isPrototypeOf`
+     - `propertyIsEnumerable`
    - `assign`
    - `create`
    - `defineProperties`

@@ -267,7 +267,13 @@ pub fn add_default_globals(g: &mut Globals) {
     g.add(
         "Object",
         object()
-            .with_static("prototype", object())
+            .with_static(
+                "prototype",
+                object()
+                    .with_static("hasOwnProperty", object())
+                    .with_static("isPrototypeOf", object())
+                    .with_static("propertyIsEnumerable", object()),
+            )
             .with_static("assign", object())
             .with_static("create", object())
             .with_static("defineProperties", object())
