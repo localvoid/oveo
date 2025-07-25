@@ -21,12 +21,14 @@ export default {
       dedupe: true,
       singletons: true,
       hoistGlobals: true,
-      renameProperties: true,
       inlineExternValues: true,
+      renameProperties: {
+        pattern: "_$",
+        map: "./properties.ini",
+      },
       externs: [
         "./externs.json",
       ],
-      propertyMap: "./properties.ini",
     }),
   ],
 };
