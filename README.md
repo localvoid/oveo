@@ -24,9 +24,14 @@ export default {
     oveo({
       hoist: true,
       dedupe: true,
-      hoistGlobals: true,
-      inlineExternValues: true,
-      singletons: true,
+      globals: {
+        hoist: true,
+        singletons: true,
+      },
+      externs: {
+        import: [/* */],
+        inline: true,
+      },
       renameProperties: {
         pattern: "_$",
         map: "property-map",
@@ -413,10 +418,12 @@ export default {
   },
   plugins: [
     oveo({
-      externs: [
-        "ivi/oveo.json", // Distributed in the 'ivi' package
-        "./my-custom-extern.json",
-      ],
+      externs: {
+        import: [
+          "ivi/oveo.json", // Distributed in the 'ivi' package
+          "./my-custom-extern.json",
+        ],
+      },
     }),
   ]
 };
