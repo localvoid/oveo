@@ -19,6 +19,7 @@
     "clean": "rm -rf tsconfig.tsbuildinfo ./dist ./node_modules"
   },
   "dependencies": {
+    "@rollup/pluginutils": "^5.2.0",
     "@oveo/optimizer": "workspace:*"
   },
   "optionalDependencies": {
