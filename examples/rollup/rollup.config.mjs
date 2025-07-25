@@ -19,16 +19,20 @@ export default {
     oveo({
       hoist: true,
       dedupe: true,
-      singletons: true,
-      hoistGlobals: true,
-      inlineExternValues: true,
+      globals: {
+        hoist: true,
+        singletons: true,
+      },
+      externs: {
+        inlineConstValues: true,
+        import: [
+          "./externs.json",
+        ],
+      },
       renameProperties: {
         pattern: "_$",
         map: "./properties.ini",
       },
-      externs: [
-        "./externs.json",
-      ],
     }),
   ],
 };

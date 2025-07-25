@@ -28,10 +28,20 @@ pub struct OptimizerOutput {
 pub struct OptimizerOptions {
     pub hoist: Option<bool>,
     pub dedupe: Option<bool>,
-    pub hoist_globals: Option<bool>,
-    pub inline_extern_values: Option<bool>,
-    pub singletons: Option<bool>,
+    pub globals: Option<GlobalsOptions>,
+    pub externs: Option<ExternsOptions>,
     pub rename_properties: Option<RenamePropertiesOptions>,
+}
+
+#[napi(object)]
+pub struct GlobalsOptions {
+    pub hoist: Option<bool>,
+    pub singletons: Option<bool>,
+}
+
+#[napi(object)]
+pub struct ExternsOptions {
+    pub inline_const_values: Option<bool>,
 }
 
 #[napi(object)]
@@ -63,11 +73,21 @@ impl Optimizer {
                 };
             (
                 oveo::OptimizerOptions {
-                    hoist: options.hoist.unwrap_or(false),
-                    dedupe: options.dedupe.unwrap_or(false),
-                    hoist_globals: options.hoist_globals.unwrap_or(false),
-                    inline_extern_values: options.inline_extern_values.unwrap_or(false),
-                    singletons: options.singletons.unwrap_or(false),
+                    hoist: options.hoist.unwrap_or_default(),
+                    dedupe: options.dedupe.unwrap_or_default(),
+                    globals: options
+                        .globals
+                        .map(|v| oveo::GlobalsOptions {
+                            hoist: v.hoist.unwrap_or_default(),
+                            singletons: v.singletons.unwrap_or_default(),
+                        })
+                        .unwrap_or_default(),
+                    externs: options
+                        .externs
+                        .map(|v| oveo::ExternsOptions {
+                            inline_const_values: v.inline_const_values.unwrap_or_default(),
+                        })
+                        .unwrap_or_default(),
                     rename_properties,
                 },
                 pattern,

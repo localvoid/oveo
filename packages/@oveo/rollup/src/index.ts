@@ -5,7 +5,7 @@ import { Optimizer, type OptimizerOptions } from "@oveo/optimizer";
 export interface PluginOptions extends OptimizerOptions {
   readonly include?: FilterPattern | undefined;
   readonly exclude?: FilterPattern | undefined;
-  readonly externs?: string[],
+  readonly externs?: { inlineConstValues?: boolean, import?: string[]; },
   readonly renameProperties?: { pattern?: string, map?: string; },
 }
 
@@ -20,8 +20,8 @@ export function oveo(options: PluginOptions = {}): Plugin {
   let init = false;
   let propertyMap: ResolvedId | null = null;
 
-  if (options.externs !== void 0) {
-    for (const extern of options.externs) {
+  if (options.externs?.import !== void 0) {
+    for (const extern of options.externs.import) {
       externs.add(extern);
       reloadExterns.add(extern);
     }

@@ -5,7 +5,6 @@ use oxc_codegen::{Codegen, CodegenOptions, CommentOptions};
 use oxc_parser::Parser;
 use oxc_semantic::SemanticBuilder;
 use oxc_span::SourceType;
-use serde::Serialize;
 
 use crate::{externs::ExternMap, property_names::LocalPropertyMap};
 pub use property_names::PropertyMap;
@@ -25,13 +24,22 @@ pub use globals::{Globals, add_default_globals};
 pub struct OptimizerOptions {
     pub hoist: bool,
     pub dedupe: bool,
-    pub hoist_globals: bool,
-    pub inline_extern_values: bool,
-    pub singletons: bool,
+    pub globals: GlobalsOptions,
+    pub externs: ExternsOptions,
     pub rename_properties: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Default, Debug)]
+pub struct GlobalsOptions {
+    pub hoist: bool,
+    pub singletons: bool,
+}
+
+#[derive(Default, Debug)]
+pub struct ExternsOptions {
+    pub inline_const_values: bool,
+}
+
 pub struct OptimizerOutput {
     pub code: String,
     pub map: String,

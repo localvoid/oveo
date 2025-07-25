@@ -114,7 +114,7 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
     }
 
     fn exit_expression(&mut self, node: &mut Expression<'a>, ctx: &mut TraverseCtx<'a>) {
-        if self.options.hoist_globals {
+        if self.options.globals.hoist {
             'hoist_globals: {
                 match node {
                     // Replaces global identifier with a reference to a const symbol.

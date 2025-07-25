@@ -14,12 +14,20 @@ export declare class OptimizerOutput {
   map: string
 }
 
+export interface ExternsOptions {
+  inlineConstValues?: boolean
+}
+
+export interface GlobalsOptions {
+  hoist?: boolean
+  singletons?: boolean
+}
+
 export interface OptimizerOptions {
   hoist?: boolean
   dedupe?: boolean
-  hoistGlobals?: boolean
-  inlineExternValues?: boolean
-  singletons?: boolean
+  globals?: GlobalsOptions
+  externs?: ExternsOptions
   renameProperties?: RenamePropertiesOptions
 }
 

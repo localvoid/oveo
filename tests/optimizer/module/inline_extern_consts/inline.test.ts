@@ -26,7 +26,7 @@ const EXTERNS = `{
     }
   }
 }`;
-const optimizer = new Optimizer({ inlineExternValues: true });
+const optimizer = new Optimizer({ externs: { inlineConstValues: true } });
 beforeAll(() => {
   optimizer.importExterns(new TextEncoder().encode(EXTERNS));
 });
