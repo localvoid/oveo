@@ -13,14 +13,15 @@ use crate::{
     chunk::dedupe::{DedupeState, dedupe_hash},
     context::{TraverseCtx, TraverseCtxState},
     globals::{GlobalValue, Globals},
+    property_names::LocalPropertyMap,
     statements::Statements,
 };
 
-pub fn optimize_chunk<'a>(
+pub fn optimize_chunk<'a, 'ctx>(
     program: &mut Program<'a>,
     options: &OptimizerOptions,
     globals: &Globals,
-    property_map: &'a FxHashMap<String, String>,
+    property_map: LocalPropertyMap<'a, 'ctx>,
     allocator: &'a Allocator,
     scoping: Scoping,
 ) {
@@ -36,7 +37,7 @@ pub fn optimize_chunk<'a>(
 struct ChunkOptimizer<'a, 'ctx> {
     options: &'ctx OptimizerOptions,
     globals: &'ctx Globals,
-    property_map: &'ctx FxHashMap<String, String>,
+    property_map: LocalPropertyMap<'a, 'ctx>,
     statements: Statements<'a>,
     annotations: Vec<AnnotatedExpr>,
     globals_symbols: FxHashMap<SymbolId, &'ctx GlobalValue>,
@@ -49,7 +50,7 @@ impl<'a, 'ctx> ChunkOptimizer<'a, 'ctx> {
     fn new(
         options: &'ctx OptimizerOptions,
         globals: &'ctx Globals,
-        property_map: &'ctx FxHashMap<String, String>,
+        property_map: LocalPropertyMap<'a, 'ctx>,
     ) -> Self {
         Self {
             options,
@@ -65,7 +66,7 @@ impl<'a, 'ctx> ChunkOptimizer<'a, 'ctx> {
     }
 }
 
-impl<'a> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, '_> {
+impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
     fn exit_program(&mut self, node: &mut Program<'a>, ctx: &mut TraverseCtx<'a>) {
         self.statements.exit_program(node, ctx);
     }
@@ -258,10 +259,8 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, '_> {
 
     fn exit_identifier_name(&mut self, node: &mut IdentifierName<'a>, ctx: &mut TraverseCtx<'a>) {
         if self.options.rename_properties {
-            let name = node.name;
-            let map = self.property_map;
-            if let Some(v) = map.get(name.as_str()) {
-                node.name = ctx.ast.atom(v);
+            if let Some(v) = self.property_map.get(node.name, &ctx.ast) {
+                node.name = v;
             }
         }
     }

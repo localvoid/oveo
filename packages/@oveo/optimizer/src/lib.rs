@@ -1,13 +1,7 @@
-use napi::Env;
-use napi::bindgen_prelude::*;
+use napi::{Env, bindgen_prelude::*};
 use napi_derive::napi;
-use oveo::Globals;
-use oveo::add_default_globals;
-use oveo::deserialize_property_map;
-use oveo::externs::ExternMap;
-use oveo::optimize_chunk;
-use oveo::optimize_module;
-use rustc_hash::FxHashMap;
+use oveo::PropertyMap;
+use oveo::{Globals, add_default_globals, externs::ExternMap, optimize_chunk, optimize_module};
 
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -21,7 +15,7 @@ struct OptimizerState {
     options: oveo::OptimizerOptions,
     globals: Globals,
     externs: RwLock<ExternMap>,
-    property_map: RwLock<FxHashMap<String, String>>,
+    property_map: RwLock<PropertyMap>,
 }
 
 #[napi]
@@ -37,30 +31,59 @@ pub struct OptimizerOptions {
     pub hoist_globals: Option<bool>,
     pub inline_extern_values: Option<bool>,
     pub singletons: Option<bool>,
-    pub rename_properties: Option<bool>,
+    pub rename_properties: Option<RenamePropertiesOptions>,
+}
+
+#[napi(object)]
+pub struct RenamePropertiesOptions {
+    pub pattern: Option<String>,
 }
 
 #[napi]
 impl Optimizer {
     #[napi(constructor)]
-    pub fn new(options: Option<OptimizerOptions>) -> Self {
+    pub fn new(options: Option<OptimizerOptions>) -> Result<Self> {
         let mut globals = Globals::default();
         add_default_globals(&mut globals);
-        Self {
+
+        let (options, pattern) = if let Some(options) = options {
+            let (rename_properties, pattern) =
+                if let Some(rename_propeties) = &options.rename_properties {
+                    let pattern = if let Some(str_pat) = &rename_propeties.pattern {
+                        Some(
+                            regex::Regex::new(str_pat)
+                                .map_err(|err| napi::Error::from_reason(err.to_string()))?,
+                        )
+                    } else {
+                        None
+                    };
+                    (true, pattern)
+                } else {
+                    (false, None)
+                };
+            (
+                oveo::OptimizerOptions {
+                    hoist: options.hoist.unwrap_or(false),
+                    dedupe: options.dedupe.unwrap_or(false),
+                    hoist_globals: options.hoist_globals.unwrap_or(false),
+                    inline_extern_values: options.inline_extern_values.unwrap_or(false),
+                    singletons: options.singletons.unwrap_or(false),
+                    rename_properties,
+                },
+                pattern,
+            )
+        } else {
+            (oveo::OptimizerOptions::default(), None)
+        };
+
+        Ok(Self {
             inner: Arc::new(OptimizerState {
-                options: options.map_or_else(Default::default, |v| oveo::OptimizerOptions {
-                    hoist: v.hoist.unwrap_or(false),
-                    dedupe: v.dedupe.unwrap_or(false),
-                    hoist_globals: v.hoist_globals.unwrap_or(false),
-                    inline_extern_values: v.inline_extern_values.unwrap_or(false),
-                    singletons: v.singletons.unwrap_or(false),
-                    rename_properties: v.rename_properties.unwrap_or(false),
-                }),
+                options,
                 globals,
                 externs: RwLock::new(ExternMap::new()),
-                property_map: RwLock::new(FxHashMap::default()),
+                property_map: RwLock::new(PropertyMap::new(pattern)),
             }),
-        }
+        })
     }
 
     #[napi]
@@ -71,11 +94,19 @@ impl Optimizer {
 
     #[napi]
     pub fn import_property_map(&mut self, data: &[u8]) -> Result<()> {
-        if let Ok(map) = deserialize_property_map(data) {
-            let mut v = self.inner.property_map.write().unwrap();
-            *v = map;
-        }
+        self.inner
+            .property_map
+            .write()
+            .unwrap()
+            .import(data)
+            .map_err(|err| napi::Error::from_reason(err.to_string()))?;
         Ok(())
+    }
+
+    #[napi]
+    pub fn export_property_map(&mut self) -> Uint8Array {
+        let map = self.inner.property_map.read().unwrap();
+        map.export().into()
     }
 
     #[napi(ts_return_type = "Promise<OptimizerOutput>")]

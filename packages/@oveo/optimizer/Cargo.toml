@@ -14,10 +14,9 @@ description = "oveo javascript optimizer NAPI bindings"
 crate-type = ["cdylib"]
 
 [dependencies]
-rustc-hash.workspace = true
+regex.workspace = true
 napi.workspace = true
 napi-derive.workspace = true
-serde.workspace = true
 oveo.workspace = true
 
 [build-dependencies]

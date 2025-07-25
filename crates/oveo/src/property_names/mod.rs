@@ -1,93 +1,157 @@
-use oxc_allocator::Allocator;
-use oxc_ast::ast::*;
-use oxc_semantic::Scoping;
-use oxc_traverse::{Traverse, traverse_mut};
-use rustc_hash::{FxHashMap, FxHashSet};
-
-use crate::{
-    context::{TraverseCtx, TraverseCtxState},
-    property_names::base54::base54,
+use std::{
+    collections::hash_map,
+    sync::{
+        Arc,
+        atomic::{self, AtomicU32},
+    },
 };
+
+use dashmap::{DashMap, DashSet};
+use oxc_ast::{AstBuilder, ast::*};
+use rustc_hash::FxHashMap;
+
+use crate::{OptimizerError, property_names::base54::base54};
 
 mod base54;
 
-pub fn collect_property_names<'a>(
-    program: &mut Program<'a>,
-    allocator: &'a Allocator,
-    scoping: Scoping,
-) -> FxHashSet<Atom<'a>> {
-    let mut collect = CollectPropertyNames::new();
-    traverse_mut(&mut collect, allocator, program, scoping, TraverseCtxState::default());
-    collect.names
+pub struct PropertyMap {
+    regex: Option<regex::Regex>,
+    index: DashMap<String, Arc<str>>,
+    reserved: DashSet<Arc<str>>,
+    next_id: AtomicU32,
 }
 
-pub struct CollectPropertyNames<'a> {
-    names: FxHashSet<Atom<'a>>,
-}
+impl PropertyMap {
+    pub fn new(regex: Option<regex::Regex>) -> Self {
+        let mut reserved = DashSet::default();
+        add_reserved_keywords(&mut reserved);
 
-impl<'a> CollectPropertyNames<'a> {
-    pub fn new() -> Self {
-        Self { names: FxHashSet::default() }
-    }
-}
-
-impl<'a> Traverse<'a, TraverseCtxState<'a>> for CollectPropertyNames<'a> {
-    fn exit_static_member_expression(
-        &mut self,
-        node: &mut StaticMemberExpression<'a>,
-        _ctx: &mut TraverseCtx<'a>,
-    ) {
-        self.names.insert(node.property.name);
-    }
-}
-
-pub fn generate_unique_names(index: &mut FxHashMap<String, String>, names: &[String]) {
-    let mut used = FxHashSet::default();
-    add_keywords(&mut used);
-
-    for v in index.values() {
-        used.insert(v.clone());
+        Self { regex, index: DashMap::default(), reserved, next_id: AtomicU32::new(0) }
     }
 
-    let mut i = 0;
-    for name in names {
-        index.entry(name.clone()).or_insert_with(|| {
-            loop {
-                let uid = base54(i);
-                i += 1;
-                if used.insert(uid.to_string()) {
-                    return uid.to_string();
-                }
+    pub fn import(&mut self, data: &[u8]) -> Result<(), OptimizerError> {
+        self.index.clear();
+        self.reserved.clear();
+        add_reserved_keywords(&mut self.reserved);
+        self.next_id.store(0, atomic::Ordering::SeqCst);
+
+        for (i, line) in data.split(|c| *c == b'\n').enumerate() {
+            let line = line.trim_ascii();
+            let Ok(line) = str::from_utf8(line) else {
+                return Err(OptimizerError::PropertyMapParseError(format!(
+                    "invalid utf8 at line '{}'",
+                    i + 1
+                )));
+            };
+            if !line.is_empty() {
+                let mut split = line.split('=');
+                let Some(key) = split.next() else {
+                    return Err(OptimizerError::PropertyMapParseError(format!(
+                        "invalid key at line '{}'",
+                        i + 1
+                    )));
+                };
+                let Some(value) = split.next() else {
+                    return Err(OptimizerError::PropertyMapParseError(format!(
+                        "invalid value at line '{}'",
+                        i + 1
+                    )));
+                };
+                let v: Arc<str> = value.into();
+                self.index.insert(key.to_string(), v.clone());
+                self.reserved.insert(v);
             }
-        });
+        }
+        Ok(())
+    }
+
+    pub fn export(&self) -> Vec<u8> {
+        let mut props = Vec::new();
+        for i in self.index.iter() {
+            props.push((i.key().to_string(), i.value().to_string()))
+        }
+        props.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let mut b: Vec<u8> = Vec::new();
+        for i in &props {
+            b.extend(i.0.as_bytes());
+            b.push(b'=');
+            b.extend(i.1.as_bytes());
+            b.push(b'\n');
+        }
+        b
+    }
+
+    pub fn matches(&self, s: &str) -> bool {
+        if let Some(re) = &self.regex { re.is_match(s) } else { false }
     }
 }
 
-fn add_keywords(index: &mut FxHashSet<String>) {
-    index.insert("as".to_string());
-    index.insert("do".to_string());
-    index.insert("if".to_string());
-    index.insert("in".to_string());
-    index.insert("is".to_string());
-    index.insert("of".to_string());
-    index.insert("any".to_string());
-    index.insert("for".to_string());
-    index.insert("get".to_string());
-    index.insert("let".to_string());
-    index.insert("new".to_string());
-    index.insert("out".to_string());
-    index.insert("set".to_string());
-    index.insert("try".to_string());
-    index.insert("var".to_string());
-    index.insert("case".to_string());
-    index.insert("else".to_string());
-    index.insert("enum".to_string());
-    index.insert("from".to_string());
-    index.insert("meta".to_string());
-    index.insert("null".to_string());
-    index.insert("this".to_string());
-    index.insert("true".to_string());
-    index.insert("type".to_string());
-    index.insert("void".to_string());
-    index.insert("with".to_string());
+pub struct LocalPropertyMap<'a, 'ctx> {
+    map: &'ctx PropertyMap,
+    cache: FxHashMap<Atom<'a>, Option<Atom<'a>>>,
+}
+
+impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
+    pub fn new(map: &'ctx PropertyMap) -> Self {
+        Self { map, cache: FxHashMap::default() }
+    }
+
+    pub fn get(&mut self, key: Atom<'a>, ast: &AstBuilder<'a>) -> Option<Atom<'a>> {
+        match self.cache.entry(key) {
+            hash_map::Entry::Occupied(cache_entry) => *cache_entry.get(),
+            hash_map::Entry::Vacant(cache_entry) => {
+                let uid = match self.map.index.entry(key.to_string()) {
+                    dashmap::Entry::Occupied(index_entry) => Some(ast.atom(index_entry.get())),
+                    dashmap::Entry::Vacant(index_entry) => {
+                        if !self.map.matches(key.as_str()) {
+                            None
+                        } else {
+                            let uid = loop {
+                                let i = self.map.next_id.fetch_add(1, atomic::Ordering::SeqCst);
+                                let s = base54(i);
+                                let uid: Arc<str> = Arc::from(s.as_str());
+                                if self.map.reserved.insert(uid.clone()) {
+                                    index_entry.insert(uid);
+                                    break ast.atom(&s);
+                                }
+                            };
+                            Some(uid)
+                        }
+                    }
+                };
+                cache_entry.insert(uid);
+                uid
+            }
+        }
+    }
+}
+
+fn add_reserved_keywords(index: &mut DashSet<Arc<str>>) {
+    index.insert("as".into());
+    index.insert("do".into());
+    index.insert("if".into());
+    index.insert("in".into());
+    index.insert("is".into());
+    index.insert("of".into());
+    index.insert("any".into());
+    index.insert("for".into());
+    index.insert("get".into());
+    index.insert("let".into());
+    index.insert("new".into());
+    index.insert("out".into());
+    index.insert("set".into());
+    index.insert("try".into());
+    index.insert("var".into());
+    index.insert("case".into());
+    index.insert("else".into());
+    index.insert("enum".into());
+    index.insert("from".into());
+    index.insert("meta".into());
+    index.insert("null".into());
+    index.insert("this".into());
+    index.insert("true".into());
+    index.insert("type".into());
+    index.insert("void".into());
+    index.insert("with".into());
 }

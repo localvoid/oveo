@@ -27,7 +27,10 @@ export default {
       hoistGlobals: true,
       inlineExternValues: true,
       singletons: true,
-      renameProperties: true,
+      renameProperties: {
+        pattern: "_$",
+        map: "property-map",
+      },
     }),
   ]
 };
@@ -366,7 +369,10 @@ export default {
   },
   plugins: [
     oveo({
-      propertyMap: "property-map.ini",
+      renameProperties: {
+        pattern: "_$",
+        map: "property-map",
+      },
     }),
   ]
 };

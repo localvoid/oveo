@@ -5,8 +5,8 @@ import { Optimizer, type OptimizerOptions } from "@oveo/optimizer";
 export interface PluginOptions extends OptimizerOptions {
   readonly include?: FilterPattern | undefined;
   readonly exclude?: FilterPattern | undefined;
-  readonly propertyMap?: string,
   readonly externs?: string[],
+  readonly renameProperties?: { pattern?: string, map?: string; },
 }
 
 export function oveo(options: PluginOptions = {}): Plugin {
@@ -29,19 +29,18 @@ export function oveo(options: PluginOptions = {}): Plugin {
   }
 
   const opt = new Optimizer(options);
-  let i = 0;
   return {
     name: "oveo:optimizer",
 
     async buildStart() {
       if (!init) {
         init = true;
-        if (options.propertyMap !== void 0) {
-          propertyMap = await this.resolve(options.propertyMap);
+        if (options.renameProperties?.map !== void 0) {
+          propertyMap = await this.resolve(options.renameProperties.map);
           if (propertyMap) {
             this.addWatchFile(propertyMap.id);
           } else {
-            this.error(`Failed to resolve property map path '${options.propertyMap}'"`);
+            this.error(`Failed to resolve property map path '${options.renameProperties.map}'"`);
           }
         }
 
@@ -105,5 +104,11 @@ export function oveo(options: PluginOptions = {}): Plugin {
         this.error(err.toString());
       }
     },
+
+    async writeBundle() {
+      if (propertyMap) {
+        await this.fs.writeFile(propertyMap.id, opt.exportPropertyMap());
+      }
+    }
   };
 };
