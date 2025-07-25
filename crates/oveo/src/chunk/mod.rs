@@ -255,20 +255,6 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, '_> {
         }
     }
 
-    // fn exit_static_member_expression(
-    //     &mut self,
-    //     node: &mut StaticMemberExpression<'a>,
-    //     ctx: &mut TraverseCtx<'a>,
-    // ) {
-    //     if self.options.rename_properties {
-    //         let name = node.property.name;
-    //         let map = self.property_map;
-    //         if let Some(v) = map.get(name.as_str()) {
-    //             node.property.name = ctx.ast.atom(v);
-    //         }
-    //     }
-    // }
-
     fn exit_identifier_name(&mut self, node: &mut IdentifierName<'a>, ctx: &mut TraverseCtx<'a>) {
         if self.options.rename_properties {
             let name = node.name;
@@ -384,33 +370,21 @@ fn create_static_member_decl<'a>(
     )
 }
 
+// `const uid = new callee_id(arguments);`
 fn create_new_expr<'a>(
     uid: &BoundIdentifier<'a>,
     callee_id: &BoundIdentifier<'a>,
     arguments: ArenaVec<'a, Argument<'a>>,
     ctx: &mut TraverseCtx<'a>,
 ) -> Statement<'a> {
-    Statement::VariableDeclaration(ctx.ast.alloc_variable_declaration(
-        SPAN,
-        VariableDeclarationKind::Const,
-        ctx.ast.vec1(ctx.ast.variable_declarator(
+    stmt_const_decl(
+        uid,
+        Expression::NewExpression(ctx.ast.alloc_new_expression(
             SPAN,
-            VariableDeclarationKind::Const,
-            ctx.ast.binding_pattern(
-                BindingPatternKind::BindingIdentifier(
-                    ctx.alloc(uid.create_binding_identifier(ctx)),
-                ),
-                NONE,
-                false,
-            ),
-            Some(Expression::NewExpression(ctx.ast.alloc_new_expression(
-                SPAN,
-                callee_id.create_read_expression(ctx),
-                NONE,
-                arguments,
-            ))),
-            false,
+            callee_id.create_read_expression(ctx),
+            NONE,
+            arguments,
         )),
-        false,
-    ))
+        ctx,
+    )
 }
