@@ -243,7 +243,16 @@ pub fn add_default_globals(g: &mut Globals) {
             .with_static("sumPrecise", object())
             .with_static("tan", object())
             .with_static("tanh", object())
-            .with_static("trunc", object()),
+            .with_static("trunc", object())
+            // Constants
+            .with_static("E", object())
+            .with_static("LN2", object())
+            .with_static("LN10", object())
+            .with_static("LOG2E", object())
+            .with_static("LOG10E", object())
+            .with_static("PI", object())
+            .with_static("SQRT1_2", object())
+            .with_static("SQRT2", object()),
     );
     g.add("NaN", object());
     g.add(

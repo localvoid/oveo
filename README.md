@@ -551,6 +551,14 @@ Extern file example:
    - `tan`
    - `tanh`
    - `trunc`
+   - `E`
+   - `LN2`
+   - `LN10`
+   - `LOG2E`
+   - `LOG10E`
+   - `PI`
+   - `SQRT1_2`
+   - `SQRT2`
  - `NaN`
  - `Number`
    - `isFinite`
