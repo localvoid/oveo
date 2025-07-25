@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { Optimizer } from "@oveo/optimizer";
 import { normalizeNewlines } from "../../normalize.js";
 
-const optimizer = new Optimizer({ dedupe: true });
+const optimizer = new Optimizer({ hoist: true, dedupe: true });
 
 const units = path.join(import.meta.dir, "data");
 const entries = await readdir(units, { recursive: true });

@@ -8,6 +8,10 @@ impl Annotation {
         Self { flags }
     }
 
+    pub fn dedupe() -> Self {
+        Self { flags: Self::DEDUPE }
+    }
+
     pub const DEDUPE: u32 = 1 << 0;
 
     pub fn is_dedupe(&self) -> bool {

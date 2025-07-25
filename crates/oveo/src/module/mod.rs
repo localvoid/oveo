@@ -1,5 +1,5 @@
 use oxc_allocator::{Address, Allocator, GetAddress, Vec as ArenaVec};
-use oxc_ast::{NONE, ast::*};
+use oxc_ast::{AstBuilder, NONE, ast::*};
 use oxc_semantic::{Scoping, SymbolFlags};
 use oxc_span::SPAN;
 use oxc_traverse::{Traverse, traverse_mut};
@@ -238,24 +238,10 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                             IntrinsicFunction::Dedupe => {
                                 if self.options.dedupe {
                                     if let Some(arg) = expr.arguments.pop() {
-                                        // __oveo__(expr, DEDUPE_FLAG)
-                                        *node = ctx.ast.expression_call(
-                                            SPAN,
-                                            ctx.ast
-                                                .expression_identifier(SPAN, Annotation::ID_NAME),
-                                            NONE,
-                                            ctx.ast.vec_from_array([
-                                                arg.into_expression().into(),
-                                                ctx.ast
-                                                    .expression_numeric_literal(
-                                                        SPAN,
-                                                        Annotation::DEDUPE as f64,
-                                                        None,
-                                                        NumberBase::Decimal,
-                                                    )
-                                                    .into(),
-                                            ]),
-                                            false,
+                                        *node = annotate(
+                                            arg.into_expression(),
+                                            Annotation::dedupe(),
+                                            &mut ctx.ast,
                                         );
                                     }
                                 } else if let Some(arg) = expr.arguments.pop() {
@@ -383,6 +369,11 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                 let mut expr2 = uid.create_read_expression(ctx);
                 std::mem::swap(expr, &mut expr2);
 
+                // Dedupe expressions when they are hoisted to the program scope.
+                if self.options.dedupe {
+                    expr2 = annotate(expr2, Annotation::dedupe(), &mut ctx.ast);
+                }
+
                 // const _HOISTED_ = expr;
                 let hoisted_var_decl = ctx.ast.declaration_variable(
                     SPAN,
@@ -473,4 +464,28 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
             }
         }
     }
+}
+
+// __oveo__(expr, annotation_flags)
+fn annotate<'a>(
+    expr: Expression<'a>,
+    annotation: Annotation,
+    ast: &mut AstBuilder<'a>,
+) -> Expression<'a> {
+    ast.expression_call(
+        SPAN,
+        ast.expression_identifier(SPAN, Annotation::ID_NAME),
+        NONE,
+        ast.vec_from_array([
+            expr.into(),
+            ast.expression_numeric_literal(
+                SPAN,
+                annotation.flags as f64,
+                None,
+                NumberBase::Decimal,
+            )
+            .into(),
+        ]),
+        false,
+    )
 }
