@@ -25,6 +25,7 @@ on:
       - crates/**
       - packages/@oveo/optimizer/**
       - tests/optimizer/**
+      - Cargo.lock
     branches:
       - master
   pull_request:
@@ -32,6 +33,7 @@ on:
       - crates/**
       - packages/@oveo/optimizer/**
       - tests/optimizer/**
+      - Cargo.lock
     branches:
       - master
 concurrency:
