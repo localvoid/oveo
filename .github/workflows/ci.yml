@@ -20,6 +20,14 @@ on:
       - "!tests/optimizer/**"
     branches:
       - master
+  pull_request:
+    paths:
+      - packages/**
+      - "!crates/**"
+      - "!packages/@oveo/optimizer/**"
+      - "!tests/optimizer/**"
+    branches:
+      - master
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
