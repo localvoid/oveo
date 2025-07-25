@@ -89,7 +89,7 @@ fn walk_call_expression(
     address: Address,
 ) -> Option<()> {
     let mut h = Sha1::default();
-    h.update(CALL.to_ne_bytes());
+    h.update(Tag::Call.to_ne_bytes());
     walk_expr(state, Some(&mut h), &node.callee, scoping, node.callee.address())?;
     h.update(node.arguments.len().to_ne_bytes());
     for arg in &node.arguments {
@@ -103,7 +103,7 @@ fn walk_call_expression(
     state.add(address, hash.into());
 
     if let Some(w) = w {
-        w.update(HASH.to_ne_bytes());
+        w.update(Tag::Hash.to_ne_bytes());
         w.update(hash);
     }
     Some(())
@@ -117,7 +117,7 @@ fn walk_array_expression<'a>(
     address: Address,
 ) -> Option<()> {
     let mut h = Sha1::default();
-    h.update(ARRAY_EXPRESSION.to_ne_bytes());
+    h.update(Tag::ArrayExpression.to_ne_bytes());
     h.update(node.elements.len().to_ne_bytes());
     for item in &node.elements {
         walk_array_expression_element(state, &mut h, item, scoping)?;
@@ -126,7 +126,7 @@ fn walk_array_expression<'a>(
     state.add(address, hash.into());
 
     if let Some(w) = w {
-        w.update(HASH.to_ne_bytes());
+        w.update(Tag::Hash.to_ne_bytes());
         w.update(hash);
     }
     Some(())
@@ -198,7 +198,7 @@ fn walk_object_expression<'a>(
     address: Address,
 ) -> Option<()> {
     let mut h = Sha1::default();
-    h.update(OBJECT_EXPRESSION.to_ne_bytes());
+    h.update(Tag::ObjectExpression.to_ne_bytes());
     h.update(node.properties.len().to_ne_bytes());
     for item in &node.properties {
         walk_object_property_kind(state, &mut h, item, scoping)?;
@@ -207,7 +207,7 @@ fn walk_object_expression<'a>(
     state.add(address, hash.into());
 
     if let Some(w) = w {
-        w.update(HASH.to_ne_bytes());
+        w.update(Tag::Hash.to_ne_bytes());
         w.update(hash);
     }
     Some(())
@@ -231,9 +231,9 @@ fn walk_object_property<'a>(
     node: &ObjectProperty<'a>,
     scoping: &Scoping,
 ) -> Option<()> {
-    w.update(OBJECT_PROPERTY_KEY.to_ne_bytes());
+    w.update(Tag::ObjectPropertyKey.to_ne_bytes());
     walk_property_key(state, Some(w), &node.key, scoping, node.key.address())?;
-    w.update(OBJECT_PROPERTY_VALUE.to_ne_bytes());
+    w.update(Tag::ObjectPropertyValue.to_ne_bytes());
     walk_expr(state, Some(w), &node.value, scoping, node.value.address())?;
     Some(())
 }
@@ -304,7 +304,7 @@ fn walk_template_literal<'a>(
     address: Address,
 ) -> Option<()> {
     let mut h = Sha1::default();
-    h.update(TEMPLATE_LITERAL.to_ne_bytes());
+    h.update(Tag::TemplateLiteral.to_ne_bytes());
     h.update(node.quasis.len().to_ne_bytes());
     for item in &node.quasis {
         walk_template_element(&mut h, item)?;
@@ -317,7 +317,7 @@ fn walk_template_literal<'a>(
     state.add(address, hash.into());
 
     if let Some(w) = w {
-        w.update(HASH.to_ne_bytes());
+        w.update(Tag::Hash.to_ne_bytes());
         w.update(hash);
     }
     Some(())
@@ -327,7 +327,7 @@ fn walk_template_element<'a>(
     w: &mut CoreWrapper<Sha1Core>,
     node: &TemplateElement<'a>,
 ) -> Option<()> {
-    w.update(TEMPLATE_ELEMENT.to_ne_bytes());
+    w.update(Tag::TemplateElement.to_ne_bytes());
     let s = &node.value.raw;
     w.update(s.len().to_ne_bytes());
     w.update(s.as_bytes());
@@ -342,7 +342,7 @@ fn walk_tagged_template_expression<'a>(
     address: Address,
 ) -> Option<()> {
     let mut h = Sha1::default();
-    h.update(TAGGED_TEMPLATE_EXPRESSION.to_ne_bytes());
+    h.update(Tag::TaggedTemplateExpression.to_ne_bytes());
     walk_expr(state, Some(&mut h), &node.tag, scoping, address)?;
     h.update(node.quasi.quasis.len().to_ne_bytes());
     for item in &node.quasi.quasis {
@@ -357,7 +357,7 @@ fn walk_tagged_template_expression<'a>(
     state.add(address, hash.into());
 
     if let Some(w) = w {
-        w.update(HASH.to_ne_bytes());
+        w.update(Tag::Hash.to_ne_bytes());
         w.update(hash);
     }
     Some(())
@@ -385,7 +385,7 @@ fn walk_boolean_literal(
 
 fn walk_null_literal(w: Option<&mut CoreWrapper<Sha1Core>>) -> Option<()> {
     if let Some(w) = w {
-        w.update(NULL_LITERAL.to_ne_bytes());
+        w.update(Tag::NullLiteral.to_ne_bytes());
     }
     Some(())
 }
@@ -395,7 +395,7 @@ fn walk_numeric_literal<'a>(
     node: &NumericLiteral<'a>,
 ) -> Option<()> {
     if let Some(h) = w {
-        h.update(NUMERIC_LITERAL.to_ne_bytes());
+        h.update(Tag::NumericLiteral.to_ne_bytes());
         h.update(node.value.to_ne_bytes());
     }
     Some(())
@@ -410,7 +410,7 @@ fn walk_string_literal<'a>(
     let s = &node.value;
     if s.len() > 16 {
         let mut h = Sha1::default();
-        h.update(STRING_LITERAL.to_ne_bytes());
+        h.update(Tag::StringLiteral.to_ne_bytes());
         h.update(s.len().to_ne_bytes());
         h.update(s.as_bytes());
 
@@ -418,11 +418,11 @@ fn walk_string_literal<'a>(
         state.add(address, hash.into());
 
         if let Some(w) = w {
-            w.update(HASH.to_ne_bytes());
+            w.update(Tag::Hash.to_ne_bytes());
             w.update(hash);
         }
     } else if let Some(h) = w {
-        h.update(STRING_LITERAL.to_ne_bytes());
+        h.update(Tag::StringLiteral.to_ne_bytes());
         h.update(s.len().to_ne_bytes());
         h.update(s.as_bytes());
     };
@@ -436,7 +436,7 @@ fn walk_big_int_literal<'a>(
     address: Address,
 ) -> Option<()> {
     let mut h = Sha1::default();
-    h.update(BIG_INT_LITERAL.to_ne_bytes());
+    h.update(Tag::BigIntLiteral.to_ne_bytes());
     let s = &node.value;
     h.update(s.len().to_ne_bytes());
     h.update(s.as_bytes());
@@ -445,7 +445,7 @@ fn walk_big_int_literal<'a>(
     state.add(address, hash.into());
 
     if let Some(w) = w {
-        w.update(HASH.to_ne_bytes());
+        w.update(Tag::Hash.to_ne_bytes());
         w.update(hash);
     }
 
@@ -459,7 +459,7 @@ fn walk_reg_exp_literal<'a>(
     address: Address,
 ) -> Option<()> {
     let mut h = Sha1::default();
-    h.update(REG_EXP_LITERAL.to_ne_bytes());
+    h.update(Tag::RegExpLiteral.to_ne_bytes());
     let Some(s) = &node.raw else {
         return None;
     };
@@ -470,7 +470,7 @@ fn walk_reg_exp_literal<'a>(
     state.add(address, hash.into());
 
     if let Some(w) = w {
-        w.update(HASH.to_ne_bytes());
+        w.update(Tag::Hash.to_ne_bytes());
         w.update(hash);
     }
 
@@ -483,13 +483,13 @@ fn walk_spread_element<'a>(
     node: &SpreadElement<'a>,
     scoping: &Scoping,
 ) -> Option<()> {
-    w.update(SPREAD_ELEMENT.to_ne_bytes());
+    w.update(Tag::SpreadElement.to_ne_bytes());
     walk_expr(state, Some(w), &node.argument, scoping, node.argument.address())?;
     Some(())
 }
 
 fn walk_elision(w: &mut CoreWrapper<Sha1Core>) -> Option<()> {
-    w.update(ELISION.to_ne_bytes());
+    w.update(Tag::Elision.to_ne_bytes());
     Some(())
 }
 
@@ -501,10 +501,10 @@ fn walk_identifier_reference<'a>(
     if let Some(h) = w {
         let r = scoping.get_reference(node.reference_id());
         if let Some(s) = r.symbol_id() {
-            h.update(IDENTIFIER_REFERENCE_SYMBOL.to_ne_bytes());
+            h.update(Tag::IdentifierReferenceSymbol.to_ne_bytes());
             h.update(s.index().to_ne_bytes());
         } else {
-            h.update(IDENTIFIER_REFERENCE_GLOBAL.to_ne_bytes());
+            h.update(Tag::IdentifierReferenceGlobal.to_ne_bytes());
             let s = &node.name;
             h.update(s.len().to_ne_bytes());
             h.update(s.as_bytes());
@@ -518,7 +518,7 @@ fn walk_identifier_name<'a>(
     node: &IdentifierName<'a>,
 ) -> Option<()> {
     if let Some(h) = w {
-        h.update(IDENTIFIER_NAME.to_ne_bytes());
+        h.update(Tag::IdentifierName.to_ne_bytes());
         h.update(node.name.as_bytes());
     }
     Some(())
@@ -529,31 +529,43 @@ fn walk_private_identifier<'a>(
     node: &PrivateIdentifier<'a>,
 ) -> Option<()> {
     if let Some(h) = w {
-        h.update(PRIVATE_IDENTIFIER.to_ne_bytes());
+        h.update(Tag::PrivateIdentifier.to_ne_bytes());
         h.update(node.name.as_bytes());
     }
     Some(())
 }
 
-// const BOOLEAN_LITERAL_FALSE: u8 = 0;
-// const BOOLEAN_LITERAL_TRUE: u8 = 1;
-const NUMERIC_LITERAL: u8 = 2;
-const STRING_LITERAL: u8 = 3;
-const NULL_LITERAL: u8 = 4;
-const BIG_INT_LITERAL: u8 = 5;
-const REG_EXP_LITERAL: u8 = 6;
-const TEMPLATE_LITERAL: u8 = 7;
-const TEMPLATE_ELEMENT: u8 = 8;
-const TAGGED_TEMPLATE_EXPRESSION: u8 = 9;
-const IDENTIFIER_REFERENCE_SYMBOL: u8 = 10;
-const IDENTIFIER_REFERENCE_GLOBAL: u8 = 11;
-const ARRAY_EXPRESSION: u8 = 12;
-const OBJECT_EXPRESSION: u8 = 13;
-const OBJECT_PROPERTY_KEY: u8 = 14;
-const OBJECT_PROPERTY_VALUE: u8 = 15;
-const IDENTIFIER_NAME: u8 = 16;
-const PRIVATE_IDENTIFIER: u8 = 17;
-const SPREAD_ELEMENT: u8 = 18;
-const ELISION: u8 = 19;
-const CALL: u8 = 20;
-const HASH: u8 = 21;
+#[allow(dead_code)]
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum Tag {
+    BooleanLiteralFalse,
+    BooleanLiteralTrue,
+    NumericLiteral,
+    StringLiteral,
+    NullLiteral,
+    BigIntLiteral,
+    RegExpLiteral,
+    TemplateLiteral,
+    TemplateElement,
+    TaggedTemplateExpression,
+    IdentifierReferenceSymbol,
+    IdentifierReferenceGlobal,
+    ArrayExpression,
+    ObjectExpression,
+    ObjectPropertyKey,
+    ObjectPropertyValue,
+    IdentifierName,
+    PrivateIdentifier,
+    SpreadElement,
+    Elision,
+    Call,
+    Hash,
+}
+
+impl Tag {
+    #[inline]
+    fn to_ne_bytes(self) -> [u8; 1] {
+        (self as u8).to_ne_bytes()
+    }
+}
