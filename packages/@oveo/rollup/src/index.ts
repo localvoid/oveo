@@ -17,7 +17,6 @@ export function oveo(options: PluginOptions = {}): Plugin {
   const externs = new Set<string>();
 
   let reloadExterns = new Set<string>();
-  let reloadPropertyMap = true;
   let init = false;
   let propertyMap: ResolvedId | null = null;
 
@@ -38,23 +37,16 @@ export function oveo(options: PluginOptions = {}): Plugin {
         if (options.renameProperties?.map !== void 0) {
           propertyMap = await this.resolve(options.renameProperties.map);
           if (propertyMap) {
-            this.addWatchFile(propertyMap.id);
+            try {
+              opt.importPropertyMap(await this.fs.readFile(propertyMap.id));
+            } catch (err) {
+              this.error(err);
+            }
           } else {
             this.error(`Failed to resolve property map path '${options.renameProperties.map}'"`);
           }
         }
 
-      }
-      if (propertyMap !== null) {
-        if (reloadPropertyMap) {
-          try {
-            this.addWatchFile(propertyMap.id);
-            const data = await this.fs.readFile(propertyMap.id);
-            opt.importPropertyMap(data);
-          } catch (err) {
-            this.warn("Failed to load property map: " + err);
-          }
-        }
       }
       if (reloadExterns.size > 0) {
         for (const extern of reloadExterns) {
@@ -74,9 +66,7 @@ export function oveo(options: PluginOptions = {}): Plugin {
     },
 
     watchChange(id) {
-      if (propertyMap !== null && propertyMap.id === id) {
-        reloadPropertyMap = true;
-      } else if (externs.has(id)) {
+      if (externs.has(id)) {
         reloadExterns.add(id);
       }
     },
