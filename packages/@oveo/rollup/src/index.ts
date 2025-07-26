@@ -43,7 +43,7 @@ export function oveo(options: PluginOptions = {}): Plugin {
               this.error(err);
             }
           } else {
-            this.error(`Failed to resolve property map path '${options.renameProperties.map}'"`);
+            this.warn(`Unable to find property map '${options.renameProperties.map}'"`);
           }
         }
 
@@ -56,6 +56,8 @@ export function oveo(options: PluginOptions = {}): Plugin {
               this.addWatchFile(resolved.id);
               const data = await this.fs.readFile(resolved.id);
               opt.importExterns(data);
+            } else {
+              this.warn(`Unable to find extern file '${extern}'`);
             }
           } catch (err) {
             this.error(err);
@@ -96,7 +98,7 @@ export function oveo(options: PluginOptions = {}): Plugin {
     },
 
     async writeBundle() {
-      if (propertyMap) {
+      if (propertyMap && options.renameProperties?.pattern !== void 0) {
         await this.fs.writeFile(propertyMap.id, opt.exportPropertyMap());
       }
     }
