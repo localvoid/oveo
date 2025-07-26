@@ -1,0 +1,10 @@
+{
+  "./test-extern.js": {
+    "exports": {
+      "val": {
+        "type": "const",
+        "value": "inlined"
+      }
+    }
+  }
+}
