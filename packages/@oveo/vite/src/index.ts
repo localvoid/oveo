@@ -10,9 +10,9 @@ export interface PluginOptions extends OptimizerOptions {
   readonly renameProperties?: { pattern?: string, map?: string; },
 }
 
-// `Plugin & { apply?: string; }` is a workaround to avoid installing Vite with
+// `Plugin & { apply?: "build"; }` is a workaround to avoid installing Vite with
 // a lot of dependencies.
-export function oveo(options: PluginOptions = {}): Plugin & { apply?: string; } {
+export function oveo(options: PluginOptions = {}): Plugin & { apply?: "build"; } {
   const filter = createFilter(
     options?.include ?? /\.(m?js|m?tsx?)$/,
     options?.exclude,
