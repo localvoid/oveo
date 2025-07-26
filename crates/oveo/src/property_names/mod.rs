@@ -1,14 +1,14 @@
 use std::{
     collections::hash_map,
     sync::{
-        Arc,
+        Arc, Mutex,
         atomic::{self, AtomicU32},
     },
 };
 
-use dashmap::{DashMap, DashSet};
+use dashmap::DashMap;
 use oxc_ast::{AstBuilder, ast::*};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{OptimizerError, property_names::base54::base54};
 
@@ -17,49 +17,49 @@ mod base54;
 pub struct PropertyMap {
     regex: Option<regex::Regex>,
     index: DashMap<String, Arc<str>>,
-    reserved: DashSet<Arc<str>>,
+    used: Mutex<FxHashSet<Arc<str>>>,
     next_id: AtomicU32,
 }
 
 impl PropertyMap {
     pub fn new(regex: Option<regex::Regex>) -> Self {
-        let mut reserved = DashSet::default();
-        add_reserved_keywords(&mut reserved);
+        let used = Mutex::default();
+        add_reserved_keywords(&mut used.lock().unwrap());
 
-        Self { regex, index: DashMap::default(), reserved, next_id: AtomicU32::new(0) }
+        Self { regex, index: DashMap::default(), used, next_id: AtomicU32::new(0) }
     }
 
     pub fn import(&mut self, data: &[u8]) -> Result<(), OptimizerError> {
-        self.index.clear();
-        self.reserved.clear();
-        add_reserved_keywords(&mut self.reserved);
-        self.next_id.store(0, atomic::Ordering::SeqCst);
+        {
+            let mut used = self.used.lock().unwrap();
+            self.next_id.store(0, atomic::Ordering::SeqCst);
 
-        for (i, line) in data.split(|c| *c == b'\n').enumerate() {
-            let line = line.trim_ascii();
-            let Ok(line) = str::from_utf8(line) else {
-                return Err(OptimizerError::PropertyMapParseError(format!(
-                    "invalid utf8 at line '{}'",
-                    i + 1
-                )));
-            };
-            if !line.is_empty() {
-                let mut split = line.split('=');
-                let Some(key) = split.next() else {
+            for (i, line) in data.split(|c| *c == b'\n').enumerate() {
+                let line = line.trim_ascii();
+                let Ok(line) = str::from_utf8(line) else {
                     return Err(OptimizerError::PropertyMapParseError(format!(
-                        "invalid key at line '{}'",
+                        "invalid utf8 at line '{}'",
                         i + 1
                     )));
                 };
-                let Some(value) = split.next() else {
-                    return Err(OptimizerError::PropertyMapParseError(format!(
-                        "invalid value at line '{}'",
-                        i + 1
-                    )));
-                };
-                let v: Arc<str> = value.into();
-                self.index.insert(key.to_string(), v.clone());
-                self.reserved.insert(v);
+                if !line.is_empty() {
+                    let mut split = line.split('=');
+                    let Some(key) = split.next() else {
+                        return Err(OptimizerError::PropertyMapParseError(format!(
+                            "invalid key at line '{}'",
+                            i + 1
+                        )));
+                    };
+                    let Some(value) = split.next() else {
+                        return Err(OptimizerError::PropertyMapParseError(format!(
+                            "invalid value at line '{}'",
+                            i + 1
+                        )));
+                    };
+                    let v: Arc<str> = value.into();
+                    self.index.insert(key.to_string(), v.clone());
+                    used.insert(v);
+                }
             }
         }
         Ok(())
@@ -107,11 +107,12 @@ impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
                         if !self.map.matches(key.as_str()) {
                             None
                         } else {
+                            let mut used = self.map.used.lock().unwrap();
                             let uid = loop {
                                 let i = self.map.next_id.fetch_add(1, atomic::Ordering::SeqCst);
                                 let s = base54(i);
                                 let uid: Arc<str> = Arc::from(s.as_str());
-                                if self.map.reserved.insert(uid.clone()) {
+                                if used.insert(uid.clone()) {
                                     index_entry.insert(uid);
                                     break ast.atom(&s);
                                 }
@@ -127,7 +128,7 @@ impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
     }
 }
 
-fn add_reserved_keywords(index: &mut DashSet<Arc<str>>) {
+fn add_reserved_keywords(index: &mut FxHashSet<Arc<str>>) {
     index.insert("as".into());
     index.insert("do".into());
     index.insert("if".into());
