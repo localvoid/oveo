@@ -1,7 +1,7 @@
 use napi::{Env, bindgen_prelude::*};
 use napi_derive::napi;
 use oveo::PropertyMap;
-use oveo::{Globals, externs::ExternMap, optimize_chunk, optimize_module};
+use oveo::{externs::ExternMap, optimize_chunk, optimize_module};
 
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -13,7 +13,6 @@ pub struct Optimizer {
 
 struct OptimizerState {
     options: oveo::OptimizerOptions,
-    globals: Globals,
     externs: RwLock<ExternMap>,
     property_map: RwLock<PropertyMap>,
 }
@@ -54,14 +53,7 @@ pub struct RenamePropertiesOptions {
 impl Optimizer {
     #[napi(constructor)]
     pub fn new(options: Option<OptimizerOptions>) -> Result<Self> {
-        let mut globals = Globals::default();
-
         let (options, pattern) = if let Some(options) = options {
-            if let Some(g) = &options.globals {
-                if let Some(include) = &g.include {
-                    globals.add(include.iter().map(|v| v.as_str()));
-                }
-            }
             let (rename_properties, pattern) =
                 if let Some(rename_propeties) = &options.rename_properties {
                     let pattern = if let Some(str_pat) = &rename_propeties.pattern {
@@ -82,7 +74,17 @@ impl Optimizer {
                     dedupe: options.dedupe.unwrap_or_default(),
                     globals: options
                         .globals
+                        .as_ref()
                         .map(|v| oveo::GlobalsOptions {
+                            include: options
+                                .globals
+                                .as_ref()
+                                .and_then(|v| {
+                                    v.include
+                                        .as_ref()
+                                        .map(|include| oveo::GlobalCategory::from(include.iter()))
+                                })
+                                .unwrap_or_default(),
                             hoist: v.hoist.unwrap_or_default(),
                             singletons: v.singletons.unwrap_or_default(),
                         })
@@ -104,7 +106,6 @@ impl Optimizer {
         Ok(Self {
             inner: Arc::new(OptimizerState {
                 options,
-                globals,
                 externs: RwLock::new(ExternMap::new()),
                 property_map: RwLock::new(PropertyMap::new(pattern)),
             }),
@@ -177,14 +178,9 @@ impl Task for OptimizeChunkTask {
 
     fn compute(&mut self) -> Result<Self::Output> {
         let property_map = self.optimizer.property_map.read().unwrap();
-        optimize_chunk(
-            &self.source_text,
-            &self.optimizer.options,
-            &self.optimizer.globals,
-            &property_map,
-        )
-        .map(|v| OptimizerOutput { code: v.code, map: v.map })
-        .map_err(|err| Error::from_reason(err.to_string()))
+        optimize_chunk(&self.source_text, &self.optimizer.options, &property_map)
+            .map(|v| OptimizerOutput { code: v.code, map: v.map })
+            .map_err(|err| Error::from_reason(err.to_string()))
     }
 
     fn resolve(&mut self, _env: Env, output: OptimizerOutput) -> Result<Self::JsValue> {

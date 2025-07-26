@@ -7,6 +7,7 @@ use oxc_semantic::SemanticBuilder;
 use oxc_span::SourceType;
 
 use crate::{externs::ExternMap, property_names::LocalPropertyMap};
+pub use globals::GlobalCategory;
 pub use property_names::PropertyMap;
 
 pub mod annotation;
@@ -17,8 +18,6 @@ pub(crate) mod globals;
 pub(crate) mod module;
 pub(crate) mod property_names;
 pub(crate) mod statements;
-
-pub use globals::Globals;
 
 #[derive(Default, Debug)]
 pub struct OptimizerOptions {
@@ -31,6 +30,7 @@ pub struct OptimizerOptions {
 
 #[derive(Default, Debug)]
 pub struct GlobalsOptions {
+    pub include: GlobalCategory,
     pub hoist: bool,
     pub singletons: bool,
 }
@@ -97,7 +97,6 @@ pub fn optimize_module(
 pub fn optimize_chunk(
     source_text: &str,
     options: &OptimizerOptions,
-    globals: &Globals,
     property_map: &PropertyMap,
 ) -> Result<OptimizerOutput, OptimizerError> {
     let allocator = Allocator::default();
@@ -119,7 +118,6 @@ pub fn optimize_chunk(
     chunk::optimize_chunk(
         &mut program,
         options,
-        globals,
         LocalPropertyMap::new(property_map),
         &allocator,
         scoping,

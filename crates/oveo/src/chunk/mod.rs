@@ -12,7 +12,7 @@ use crate::{
     annotation::Annotation,
     chunk::dedupe::{DedupeState, dedupe_hash},
     context::{TraverseCtx, TraverseCtxState},
-    globals::{GlobalValue, Globals},
+    globals::{GlobalValue, get_global_value},
     property_names::LocalPropertyMap,
     statements::Statements,
 };
@@ -20,12 +20,11 @@ use crate::{
 pub fn optimize_chunk<'a, 'ctx>(
     program: &mut Program<'a>,
     options: &OptimizerOptions,
-    globals: &Globals,
     property_map: LocalPropertyMap<'a, 'ctx>,
     allocator: &'a Allocator,
     scoping: Scoping,
 ) {
-    let mut optimizer = ChunkOptimizer::new(options, globals, property_map);
+    let mut optimizer = ChunkOptimizer::new(options, property_map);
     let scoping =
         traverse_mut(&mut optimizer, allocator, program, scoping, TraverseCtxState::default());
     if options.dedupe && optimizer.dedupe.duplicates > 0 {
@@ -36,7 +35,6 @@ pub fn optimize_chunk<'a, 'ctx>(
 
 struct ChunkOptimizer<'a, 'ctx> {
     options: &'ctx OptimizerOptions,
-    globals: &'ctx Globals,
     property_map: LocalPropertyMap<'a, 'ctx>,
     statements: Statements<'a>,
     annotations: Vec<AnnotatedExpr>,
@@ -47,14 +45,9 @@ struct ChunkOptimizer<'a, 'ctx> {
 }
 
 impl<'a, 'ctx> ChunkOptimizer<'a, 'ctx> {
-    fn new(
-        options: &'ctx OptimizerOptions,
-        globals: &'ctx Globals,
-        property_map: LocalPropertyMap<'a, 'ctx>,
-    ) -> Self {
+    fn new(options: &'ctx OptimizerOptions, property_map: LocalPropertyMap<'a, 'ctx>) -> Self {
         Self {
             options,
-            globals,
             property_map,
             statements: Statements::new(),
             annotations: Vec::new(),
@@ -121,7 +114,9 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                     Expression::Identifier(expr) => {
                         let reference = ctx.scoping().get_reference(expr.reference_id());
                         if reference.symbol_id().is_none() {
-                            if let Some(v) = self.globals.get(expr.name.as_str()) {
+                            if let Some(v) =
+                                get_global_value(self.options.globals.include, expr.name.as_str())
+                            {
                                 if !v.is_hoistable() {
                                     break 'hoist_globals;
                                 }
