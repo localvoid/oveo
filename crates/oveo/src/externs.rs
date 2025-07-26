@@ -24,6 +24,7 @@ impl ExternMap {
         add_intrinsic(&mut exports, "hoist", IntrinsicFunction::Hoist, vec![arg_hoist()]);
         add_intrinsic(&mut exports, "scope", IntrinsicFunction::Scope, vec![arg_scope()]);
         add_intrinsic(&mut exports, "dedupe", IntrinsicFunction::Dedupe, vec![]);
+        add_intrinsic(&mut exports, "key", IntrinsicFunction::Key, vec![]);
         modules.insert(INTRINSICS_MODULE_NAME.to_string(), Arc::new(ExternModule { exports }));
 
         Self { modules }
@@ -80,6 +81,7 @@ pub enum IntrinsicFunction {
     Hoist,
     Scope,
     Dedupe,
+    Key,
 }
 
 #[derive(Deserialize)]

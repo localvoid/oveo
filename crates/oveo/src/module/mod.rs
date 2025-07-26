@@ -229,25 +229,32 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                     if let Some(intrinsic) = &f.intrinsic {
                         match intrinsic {
                             IntrinsicFunction::Hoist | IntrinsicFunction::Scope => {
-                                if let Some(arg) = expr.arguments.pop() {
-                                    *node = arg.into_expression();
-                                } else {
-                                    *node = ctx.ast.void_0(SPAN);
-                                }
+                                *node = unwrap_call_expr(expr, &mut ctx.ast);
                             }
                             IntrinsicFunction::Dedupe => {
-                                if self.options.dedupe {
-                                    if let Some(arg) = expr.arguments.pop() {
-                                        *node = annotate(
-                                            arg.into_expression(),
-                                            Annotation::dedupe(),
-                                            &mut ctx.ast,
-                                        );
-                                    }
-                                } else if let Some(arg) = expr.arguments.pop() {
-                                    *node = arg.into_expression();
+                                if self.options.dedupe
+                                    && let Some(arg) = expr.arguments.pop()
+                                {
+                                    *node = annotate(
+                                        arg.into_expression(),
+                                        Annotation::dedupe(),
+                                        &mut ctx.ast,
+                                    );
                                 } else {
-                                    *node = ctx.ast.void_0(SPAN);
+                                    *node = unwrap_call_expr(expr, &mut ctx.ast);
+                                }
+                            }
+                            IntrinsicFunction::Key => {
+                                if self.options.rename_properties
+                                    && let Some(arg) = expr.arguments.pop()
+                                {
+                                    *node = annotate(
+                                        arg.into_expression(),
+                                        Annotation::key(),
+                                        &mut ctx.ast,
+                                    );
+                                } else {
+                                    *node = unwrap_call_expr(expr, &mut ctx.ast);
                                 }
                             }
                         }
@@ -489,4 +496,8 @@ fn annotate<'a>(
         ]),
         false,
     )
+}
+
+fn unwrap_call_expr<'a>(expr: &mut CallExpression<'a>, ast: &mut AstBuilder<'a>) -> Expression<'a> {
+    if let Some(arg) = expr.arguments.pop() { arg.into_expression() } else { ast.void_0(SPAN) }
 }

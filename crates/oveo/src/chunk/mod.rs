@@ -85,7 +85,7 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
     }
 
     fn enter_expression(&mut self, node: &mut Expression<'a>, ctx: &mut TraverseCtx<'a>) {
-        if self.options.dedupe {
+        if self.options.dedupe || self.options.rename_properties {
             // Unwraps `__oveo__()` expressions and adds annotation to the stack.
             let address = node.address();
             if let Expression::CallExpression(expr) = node {
@@ -199,32 +199,31 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                                 .symbol_id()
                             {
                                 if let Some(&global) = self.globals_symbols.get(&object_symbol_id) {
-                                    if !global.is_singleton_func() {
-                                        return;
+                                    if global.is_singleton_func() {
+                                        let uid = self
+                                            .singletons
+                                            .entry(global as *const _)
+                                            .or_insert_with(|| {
+                                                let callee_id = self
+                                                    .globals_ids
+                                                    .get(&(global as *const _))
+                                                    .unwrap();
+                                                let uid = ctx.generate_uid_in_root_scope(
+                                                    "_SINGLETON_",
+                                                    SymbolFlags::ConstVariable,
+                                                );
+                                                self.statements.insert_top_level_statement(
+                                                    create_new_expr(
+                                                        &uid,
+                                                        callee_id,
+                                                        ctx.ast.vec(),
+                                                        ctx,
+                                                    ),
+                                                );
+                                                uid
+                                            });
+                                        *node = uid.create_read_expression(ctx);
                                     }
-                                    let uid = self
-                                        .singletons
-                                        .entry(global as *const _)
-                                        .or_insert_with(|| {
-                                            let callee_id = self
-                                                .globals_ids
-                                                .get(&(global as *const _))
-                                                .unwrap();
-                                            let uid = ctx.generate_uid_in_root_scope(
-                                                "_SINGLETON_",
-                                                SymbolFlags::ConstVariable,
-                                            );
-                                            self.statements.insert_top_level_statement(
-                                                create_new_expr(
-                                                    &uid,
-                                                    callee_id,
-                                                    ctx.ast.vec(),
-                                                    ctx,
-                                                ),
-                                            );
-                                            uid
-                                        });
-                                    *node = uid.create_read_expression(ctx);
                                 }
                             }
                         }
@@ -234,21 +233,32 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
             }
         }
 
-        if self.options.dedupe {
-            let address = node.address();
-            if let Some(a) = self.annotations.pop_if(|a| a.address == address) {
-                if a.annotation.is_dedupe() {
-                    if let Expression::CallExpression(expr) = node {
-                        if let Some(arg0) = expr.arguments.pop() {
-                            let arg0 = arg0.into_expression();
-                            let _ = dedupe_hash(&mut self.dedupe, &arg0, ctx.scoping());
-                            *node = arg0;
-                            return;
-                        }
+        let address = node.address();
+        if let Some(a) = self.annotations.pop_if(|a| a.address == address) {
+            if self.options.dedupe && a.annotation.is_dedupe() {
+                if let Expression::CallExpression(expr) = node {
+                    if let Some(arg0) = expr.arguments.pop() {
+                        let arg0 = arg0.into_expression();
+                        let _ = dedupe_hash(&mut self.dedupe, &arg0, ctx.scoping());
+                        *node = arg0;
+                        return;
                     }
                 }
-                *node = ctx.ast.void_0(SPAN);
+            } else if self.options.rename_properties && a.annotation.is_key() {
+                if let Expression::CallExpression(expr) = node {
+                    if let Some(arg0) = expr.arguments.pop() {
+                        let mut arg0 = arg0.into_expression();
+                        if let Expression::StringLiteral(expr) = &mut arg0 {
+                            if let Some(v) = self.property_map.get(expr.value, &ctx.ast) {
+                                expr.value = v;
+                            }
+                        }
+                        *node = arg0;
+                        return;
+                    }
+                }
             }
+            *node = ctx.ast.void_0(SPAN);
         }
     }
 

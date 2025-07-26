@@ -12,7 +12,7 @@ for (const entry of entries) {
   try {
     const input = await Bun.file(path.join(units, entry, "input.js")).text();
 
-    test.only(`chunk/rename_properties/${entry}`, async () => {
+    test(`chunk/rename_properties/${entry}`, async () => {
       const optimizer = new Optimizer({ renameProperties });
       const propsImport = Bun.file(path.join(units, entry, "props-import.ini"));
       if (await propsImport.exists()) {
@@ -20,7 +20,8 @@ for (const entry of entries) {
       }
 
       const output = Bun.file(path.join(units, entry, "output.js"));
-      const chunkResult = await optimizer.optimizeChunk(input);
+      const moduleResult = await optimizer.optimizeModule(input);
+      const chunkResult = await optimizer.optimizeChunk(moduleResult.code);
       expect(normalizeNewlines(chunkResult.code)).toBe(normalizeNewlines(await output.text()));
 
       const propsExport = Bun.file(path.join(units, entry, "props-export.ini"));
