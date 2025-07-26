@@ -18,7 +18,7 @@ pub(crate) mod module;
 pub(crate) mod property_names;
 pub(crate) mod statements;
 
-pub use globals::{Globals, add_default_globals};
+pub use globals::Globals;
 
 #[derive(Default, Debug)]
 pub struct OptimizerOptions {

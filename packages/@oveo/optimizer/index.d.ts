@@ -19,6 +19,7 @@ export interface ExternsOptions {
 }
 
 export interface GlobalsOptions {
+  include?: Array<string>
   hoist?: boolean
   singletons?: boolean
 }

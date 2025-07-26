@@ -20,6 +20,7 @@ export default {
       hoist: true,
       dedupe: true,
       globals: {
+        include: ["js", "web"],
         hoist: true,
         singletons: true,
       },

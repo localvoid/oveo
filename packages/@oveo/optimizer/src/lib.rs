@@ -1,7 +1,7 @@
 use napi::{Env, bindgen_prelude::*};
 use napi_derive::napi;
 use oveo::PropertyMap;
-use oveo::{Globals, add_default_globals, externs::ExternMap, optimize_chunk, optimize_module};
+use oveo::{Globals, externs::ExternMap, optimize_chunk, optimize_module};
 
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -35,6 +35,7 @@ pub struct OptimizerOptions {
 
 #[napi(object)]
 pub struct GlobalsOptions {
+    pub include: Option<Vec<String>>,
     pub hoist: Option<bool>,
     pub singletons: Option<bool>,
 }
@@ -54,9 +55,13 @@ impl Optimizer {
     #[napi(constructor)]
     pub fn new(options: Option<OptimizerOptions>) -> Result<Self> {
         let mut globals = Globals::default();
-        add_default_globals(&mut globals);
 
         let (options, pattern) = if let Some(options) = options {
+            if let Some(g) = &options.globals {
+                if let Some(include) = &g.include {
+                    globals.add(include.iter().map(|v| v.as_str()));
+                }
+            }
             let (rename_properties, pattern) =
                 if let Some(rename_propeties) = &options.rename_properties {
                     let pattern = if let Some(str_pat) = &rename_propeties.pattern {
