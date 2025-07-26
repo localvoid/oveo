@@ -7,7 +7,7 @@
   "devDependencies": {
     "@types/node": "^24.1.0",
     "@types/bun": "^1.2.19",
-    "@napi-rs/cli": "^3.0.3",
+    "@napi-rs/cli": "^3.0.4",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "typescript": "^5.8.3",
     "rollup": "^4.45.1"
