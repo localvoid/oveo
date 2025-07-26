@@ -1,9 +1,9 @@
 {
-  "test": {
+  "./test-extern.js": {
     "exports": {
       "val": {
         "type": "const",
-        "value": "abc"
+        "value": "inlined"
       }
     }
   }

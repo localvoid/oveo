@@ -1,4 +1,5 @@
-import type { Plugin, ResolvedId } from "rollup";
+import { hash } from "node:crypto";
+import type { Plugin } from "rollup";
 import { createFilter, type FilterPattern } from "@rollup/pluginutils";
 import { Optimizer, type OptimizerOptions } from "@oveo/optimizer";
 
@@ -14,62 +15,49 @@ export function oveo(options: PluginOptions = {}): Plugin {
     options?.include ?? /\.(m?js|m?tsx?)$/,
     options?.exclude,
   );
-  const externs = new Set<string>();
 
-  let reloadExterns = new Set<string>();
-  let init = false;
-  let propertyMap: ResolvedId | null = null;
-
-  if (options.externs?.import !== void 0) {
-    for (const extern of options.externs.import) {
-      externs.add(extern);
-      reloadExterns.add(extern);
-    }
-  }
-
-  const opt = new Optimizer(options);
+  let opt: Optimizer;
+  let propertyMapData: Uint8Array | undefined;
   return {
     name: "oveo:optimizer",
 
     async buildStart() {
-      if (!init) {
-        init = true;
-        if (options.renameProperties?.map !== void 0) {
-          propertyMap = await this.resolve(options.renameProperties.map);
-          if (propertyMap) {
-            try {
-              opt.importPropertyMap(await this.fs.readFile(propertyMap.id));
-            } catch (err) {
-              this.error(err);
-            }
-          } else {
-            this.warn(`Unable to find property map '${options.renameProperties.map}'"`);
+      opt = new Optimizer(options);
+
+      const propertyMap = options.renameProperties?.map;
+      if (propertyMap) {
+        this.addWatchFile(propertyMap);
+        try {
+          propertyMapData = await this.fs.readFile(propertyMap);
+          try {
+            opt.importPropertyMap(propertyMapData);
+          } catch (err) {
+            this.warn(`Invalid property map file '${propertyMap}': ${err}`);
+          }
+        } catch (err) {
+          // Report warnings only when minified property generation is disabled.
+          if (!options.renameProperties.pattern) {
+            this.warn(`Unable to read property map file '${propertyMap}': ${err}`);
           }
         }
-
       }
-      if (reloadExterns.size > 0) {
-        for (const extern of reloadExterns) {
-          try {
-            const resolved = await this.resolve(extern);
-            if (resolved) {
-              this.addWatchFile(resolved.id);
+
+      const importExterns = options.externs?.import;
+      if (importExterns) {
+        for (const extern of importExterns) {
+          const resolved = await this.resolve(extern);
+          if (resolved) {
+            this.addWatchFile(resolved.id);
+            try {
               const data = await this.fs.readFile(resolved.id);
               opt.importExterns(data);
-            } else {
-              this.warn(`Unable to find extern file '${extern}'`);
+            } catch (err) {
+              this.warn(`Unable to import extern file '${extern}': ${err}`);
             }
-          } catch (err) {
-            this.error(err);
+          } else {
+            this.warn(`Unable to find extern file '${extern}'`);
           }
         }
-        reloadExterns.clear();
-      }
-    },
-
-    watchChange(id) {
-      if (externs.has(id)) {
-        reloadExterns.add(id);
       }
     },
 
@@ -81,7 +69,7 @@ export function oveo(options: PluginOptions = {}): Plugin {
           code = result.code;
           return map ? { code, map } : { code };
         } catch (err) {
-          this.error(err.toString());
+          this.error(`Unable to transform module '${id}': ${err}`);
         }
       }
     },
@@ -93,13 +81,30 @@ export function oveo(options: PluginOptions = {}): Plugin {
         code = result.code;
         return map ? { code, map } : { code };
       } catch (err) {
-        this.error(err.toString());
+        this.error(`Unable to optimize chunk file: ${err}`);
       }
     },
 
     async writeBundle() {
+      const propertyMap = options.renameProperties?.map;
+      // If minified names are generated dynamically
       if (propertyMap && options.renameProperties?.pattern !== void 0) {
-        await this.fs.writeFile(propertyMap.id, opt.exportPropertyMap());
+        const newData = opt.exportPropertyMap();
+        // Avoid writing when property map hasn't changed.
+        if (
+          propertyMapData !== void 0 &&
+          (
+            propertyMapData.length !== newData.length ||
+            hash("sha1", propertyMapData) !== hash("sha1", newData)
+          )
+        ) {
+          propertyMapData = newData;
+          try {
+            await this.fs.writeFile(propertyMap, newData);
+          } catch (err) {
+            this.warn(`Unable to update property map file '${propertyMap}': ${err}`);
+          }
+        }
       }
     }
   };

@@ -2,7 +2,7 @@ import nodeResolve from "@rollup/plugin-node-resolve";
 import { oveo } from "@oveo/rollup";
 
 export default {
-  input: "./app.js",
+  input: "./src/main.js",
   output: {
     format: "es",
     strict: true,
