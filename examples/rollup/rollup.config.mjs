@@ -31,7 +31,7 @@ export default {
         ],
       },
       renameProperties: {
-        pattern: "_$",
+        pattern: "^[^_].+[^_]_$",
         map: "./properties.ini",
       },
     }),

@@ -19,6 +19,7 @@ export default defineConfig({
         inlineConstValues: true,
       },
       renameProperties: {
+        pattern: "^[^_].+[^_]_$",
         map: "properties.ini",
       },
     }),

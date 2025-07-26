@@ -31,7 +31,7 @@ export default defineConfig({
         inlineConstValues: true,
       },
       renameProperties: {
-        pattern: "_$",
+        pattern: "^[^_].+[^_]_$",
         map: "property-map",
       },
     }),
@@ -373,7 +373,7 @@ export default {
   plugins: [
     oveo({
       renameProperties: {
-        pattern: "_$",
+        pattern: "^[^_].+[^_]_$",
         map: "property-map",
       },
     }),
