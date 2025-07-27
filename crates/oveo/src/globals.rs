@@ -220,18 +220,16 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
             .with_static("asIntN", object(GlobalCategory::JS))
             .with_static("asUintN", object(GlobalCategory::JS)),
     );
+    add(g, "Boolean", object(GlobalCategory::JS));
+    add(g, "DataView", object(GlobalCategory::JS));
     add(
         g,
-        "BigInt64Array",
+        "Date",
         object(GlobalCategory::JS)
             .with_static("now", object(GlobalCategory::JS))
             .with_static("parse", object(GlobalCategory::JS))
             .with_static("UTC", object(GlobalCategory::JS)),
     );
-    add(g, "BigUint64Array", object(GlobalCategory::JS));
-    add(g, "Boolean", object(GlobalCategory::JS));
-    add(g, "DataView", object(GlobalCategory::JS));
-    add(g, "Date", object(GlobalCategory::JS));
     add(g, "DisposableStack", object(GlobalCategory::JS));
     add(
         g,
@@ -241,16 +239,10 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
             .with_static("isError", object(GlobalCategory::JS)),
     );
     add(g, "FinalizationRegistry", object(GlobalCategory::JS));
-    add(g, "Float16Array", object(GlobalCategory::JS));
-    add(g, "Float32Array", object(GlobalCategory::JS));
-    add(g, "Float64Array", object(GlobalCategory::JS));
     add(g, "Function", object(GlobalCategory::JS));
     add(g, "Generator", object(GlobalCategory::JS));
     add(g, "GeneratorFunction", object(GlobalCategory::JS));
     add(g, "Infinity", object(GlobalCategory::JS));
-    add(g, "Int8Array", object(GlobalCategory::JS));
-    add(g, "Int16Array", object(GlobalCategory::JS));
-    add(g, "Int32Array", object(GlobalCategory::JS));
     add(
         g,
         "Intl",
@@ -446,19 +438,8 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "SyntaxError", object(GlobalCategory::JS));
     add(g, "TextDecoder", object(GlobalCategory::JS).with_func(func().singleton()));
     add(g, "TextEncoder", object(GlobalCategory::JS).with_func(func().singleton()));
-    add(
-        g,
-        "TypedArray",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
-    );
     add(g, "TypeError", object(GlobalCategory::JS));
-    add(g, "Uint8Array", object(GlobalCategory::JS));
-    add(g, "Uint8ClampedArray", object(GlobalCategory::JS));
-    add(g, "Uint16Array", object(GlobalCategory::JS));
-    add(g, "Uint32Array", object(GlobalCategory::JS));
+
     add(g, "URIError", object(GlobalCategory::JS));
     add(g, "URLPattern", object(GlobalCategory::JS));
     add(g, "WeakMap", object(GlobalCategory::JS));
@@ -473,6 +454,106 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "parseFloat", object(GlobalCategory::JS));
     add(g, "parseInt", object(GlobalCategory::JS));
     add(g, "undefined", object(GlobalCategory::JS));
+
+    // Typed Arrays
+    add(
+        g,
+        "Float16Array",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+    );
+    add(
+        g,
+        "Float32Array",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+    );
+    add(
+        g,
+        "Float64Array",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+    );
+    add(
+        g,
+        "Uint8Array",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS))
+            .with_static("fromBase64", object(GlobalCategory::JS))
+            .with_static("fromHex", object(GlobalCategory::JS)),
+    );
+    add(
+        g,
+        "Uint8ClampedArray",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+    );
+    add(
+        g,
+        "Uint16Array",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+    );
+    add(
+        g,
+        "Uint32Array",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+    );
+    add(
+        g,
+        "Int8Array",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+    );
+    add(
+        g,
+        "Int16Array",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+    );
+    add(
+        g,
+        "Int32Array",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+    );
+    add(
+        g,
+        "BigInt64Array",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+    );
+    add(
+        g,
+        "BigUint64Array",
+        object(GlobalCategory::JS)
+            .with_static("from", object(GlobalCategory::JS))
+            .with_static("of", object(GlobalCategory::JS))
+            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+    );
 
     // Console
     add(
