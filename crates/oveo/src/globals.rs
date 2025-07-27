@@ -7,15 +7,6 @@ use rustc_hash::FxHashMap;
 static GLOBALS: LazyLock<GlobalValue> = LazyLock::new(|| {
     let mut statics = FxHashMap::default();
     add_globals_js(&mut statics);
-    add_globals_console(&mut statics);
-    add_globals_web(&mut statics);
-    add_globals_web_typed_css(&mut statics);
-    add_globals_web_background_fetch(&mut statics);
-    add_globals_web_barcode(&mut statics);
-    add_globals_web_battery(&mut statics);
-    add_globals_web_bluetooth(&mut statics);
-    add_globals_web_sync(&mut statics);
-    add_globals_web_paint(&mut statics);
 
     GlobalValue {
         statics,
@@ -33,13 +24,8 @@ impl GlobalCategory {
     pub const JS: Self = Self(1 << 0);
     pub const CONSOLE: Self = Self(1 << 1);
     pub const WEB: Self = Self(1 << 2);
-    pub const WEB_TYPED_CSS: Self = Self(1 << 3);
-    pub const WEB_BACKGROUND_FETCH: Self = Self(1 << 4);
-    pub const WEB_BARCODE: Self = Self(1 << 5);
-    pub const WEB_BATTERY: Self = Self(1 << 6);
-    pub const WEB_BLUETOOTH: Self = Self(1 << 7);
-    pub const WEB_SYNC: Self = Self(1 << 8);
-    pub const WEB_PAINT: Self = Self(1 << 9);
+    pub const ELECTRON: Self = Self(1 << 3);
+    pub const TAURI: Self = Self(1 << 4);
     pub const UNKNOWN: Self = Self(1 << 10);
 
     #[inline]
@@ -61,13 +47,6 @@ impl<S: AsRef<str>, T: Iterator<Item = S>> From<T> for GlobalCategory {
                 "js" => c = c.and(Self::JS),
                 "console" => c = c.and(Self::CONSOLE),
                 "web" => c = c.and(Self::WEB),
-                "web:typed-css" => c = c.and(Self::WEB_TYPED_CSS),
-                "web:background-fetch" => c = c.and(Self::WEB_BACKGROUND_FETCH),
-                "web:barcode" => c = c.and(Self::WEB_BARCODE),
-                "web:battery" => c = c.and(Self::WEB_BATTERY),
-                "web:bluetooth" => c = c.and(Self::WEB_BLUETOOTH),
-                "web:sync" => c = c.and(Self::WEB_SYNC),
-                "web:paint" => c = c.and(Self::WEB_PAINT),
                 _ => c = c.and(Self::UNKNOWN),
             }
         }
@@ -200,6 +179,7 @@ fn add<T: Build<Output = GlobalValue>>(
     name: &'static str,
     value: T,
 ) {
+    debug_assert!(!g.contains_key(name), "global duplicate '{name}'");
     g.insert(name, value.build());
 }
 
@@ -503,9 +483,8 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "parseFloat", object(GlobalCategory::JS));
     add(g, "parseInt", object(GlobalCategory::JS));
     add(g, "undefined", object(GlobalCategory::JS));
-}
 
-fn add_globals_console(g: &mut FxHashMap<&'static str, GlobalValue>) {
+    // Console
     add(
         g,
         "console",
@@ -533,15 +512,45 @@ fn add_globals_console(g: &mut FxHashMap<&'static str, GlobalValue>) {
             .with_static("trace", object(GlobalCategory::CONSOLE))
             .with_static("warn", object(GlobalCategory::CONSOLE)),
     );
-}
 
-fn add_globals_web(g: &mut FxHashMap<&'static str, GlobalValue>) {
+    // Web API
     add(g, "Navigator", object(GlobalCategory::WEB));
     add(g, "Window", object(GlobalCategory::WEB));
     add(g, "Document", object(GlobalCategory::WEB));
+    add(g, "XMLDocument", object(GlobalCategory::WEB));
+    add(g, "DocumentFragment", object(GlobalCategory::WEB));
+    add(g, "DocumentType", object(GlobalCategory::WEB));
+    add(g, "CustomElementRegistry", object(GlobalCategory::WEB));
+    add(g, "ShadowRoot", object(GlobalCategory::WEB));
+    add(
+        g,
+        "URL",
+        object(GlobalCategory::WEB)
+            .with_static("canParse", object(GlobalCategory::WEB))
+            .with_static("createObjectURL", object(GlobalCategory::WEB))
+            .with_static("parse", object(GlobalCategory::WEB))
+            .with_static("revokeObjectURL", object(GlobalCategory::WEB)),
+    );
     add(g, "URLSearchParams", object(GlobalCategory::WEB));
+    add(g, "AbstractRange", object(GlobalCategory::WEB));
     add(g, "Range", object(GlobalCategory::WEB));
-
+    add(g, "StaticRange", object(GlobalCategory::WEB));
+    add(g, "Attr", object(GlobalCategory::WEB));
+    add(g, "CDATASection", object(GlobalCategory::WEB));
+    add(g, "CharacterData", object(GlobalCategory::WEB));
+    add(g, "Comment", object(GlobalCategory::WEB));
+    add(g, "DOMImplementation", object(GlobalCategory::WEB));
+    add(g, "DOMParser", object(GlobalCategory::WEB));
+    add(g, "DOMTokenList", object(GlobalCategory::WEB));
+    add(g, "ProcessingInstruction", object(GlobalCategory::WEB));
+    add(g, "TimeRanges", object(GlobalCategory::WEB));
+    add(g, "TreeWalker", object(GlobalCategory::WEB));
+    add(g, "DOMException", object(GlobalCategory::WEB));
+    add(g, "Node", object(GlobalCategory::WEB));
+    add(g, "NodeIterator", object(GlobalCategory::WEB));
+    add(g, "NodeList", object(GlobalCategory::WEB));
+    add(g, "NamedNodeMap", object(GlobalCategory::WEB));
+    add(g, "Text", object(GlobalCategory::WEB));
     add(g, "Element", object(GlobalCategory::WEB));
     add(g, "HTMLDocument", object(GlobalCategory::WEB));
     add(g, "HTMLCollection", object(GlobalCategory::WEB));
@@ -613,25 +622,161 @@ fn add_globals_web(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "HTMLUListElement", object(GlobalCategory::WEB));
     add(g, "HTMLUnknownElement", object(GlobalCategory::WEB));
     add(g, "HTMLVideoElement", object(GlobalCategory::WEB));
-    add(g, "SVGElement", object(GlobalCategory::WEB));
 
-    add(g, "AnimationEvent", object(GlobalCategory::WEB));
-    add(g, "AnimationPlaybackEvent", object(GlobalCategory::WEB));
+    // https://developer.mozilla.org/en-US/docs/Web/API/SVG_API
+    add(g, "SVGElement", object(GlobalCategory::WEB));
+    add(g, "SVGAElement", object(GlobalCategory::WEB));
+    add(g, "SVGAnimationElement", object(GlobalCategory::WEB));
+    add(g, "SVGAnimateMotionElement", object(GlobalCategory::WEB));
+    add(g, "SVGAnimateTransformElement", object(GlobalCategory::WEB));
+    add(g, "SVGCircleElement", object(GlobalCategory::WEB));
+    add(g, "SVGClipPathElement", object(GlobalCategory::WEB));
+    add(g, "SVGComponentTransferFunctionElement", object(GlobalCategory::WEB));
+    add(g, "SVGDefsElement", object(GlobalCategory::WEB));
+    add(g, "SVGDescElement", object(GlobalCategory::WEB));
+    add(g, "SVGDiscardElement", object(GlobalCategory::WEB));
+    add(g, "SVGEllipseElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEBlendElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEColorMatrixElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEComponentTransferElement", object(GlobalCategory::WEB));
+    add(g, "SVGFECompositeElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEConvolveMatrixElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEDiffuseLightingElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEDisplacementMapElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEDistantLightElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEDropShadowElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEFloodElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEFuncAElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEFuncBElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEFuncGElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEFuncRElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEGaussianBlurElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEImageElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEMergeElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEMergeNodeElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEMorphologyElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEOffsetElement", object(GlobalCategory::WEB));
+    add(g, "SVGFEPointLightElement", object(GlobalCategory::WEB));
+    add(g, "SVGFESpecularLightingElement", object(GlobalCategory::WEB));
+    add(g, "SVGFESpotLightElement", object(GlobalCategory::WEB));
+    add(g, "SVGFETileElement", object(GlobalCategory::WEB));
+    add(g, "SVGFETurbulenceElement", object(GlobalCategory::WEB));
+    add(g, "SVGFilterElement", object(GlobalCategory::WEB));
+    add(g, "SVGForeignObjectElement", object(GlobalCategory::WEB));
+    add(g, "SVGGElement", object(GlobalCategory::WEB));
+    add(g, "SVGGeometryElement", object(GlobalCategory::WEB));
+    add(g, "SVGGradientElement", object(GlobalCategory::WEB));
+    add(g, "SVGGraphicsElement", object(GlobalCategory::WEB));
+    add(g, "SVGImageElement", object(GlobalCategory::WEB));
+    add(g, "SVGLinearGradientElement", object(GlobalCategory::WEB));
+    add(g, "SVGLineElement", object(GlobalCategory::WEB));
+    add(g, "SVGMarkerElement", object(GlobalCategory::WEB));
+    add(g, "SVGMaskElement", object(GlobalCategory::WEB));
+    add(g, "SVGMetadataElement", object(GlobalCategory::WEB));
+    add(g, "SVGPathElement", object(GlobalCategory::WEB));
+    add(g, "SVGPatternElement", object(GlobalCategory::WEB));
+    add(g, "SVGPolylineElement", object(GlobalCategory::WEB));
+    add(g, "SVGPolygonElement", object(GlobalCategory::WEB));
+    add(g, "SVGRadialGradientElement", object(GlobalCategory::WEB));
+    add(g, "SVGRectElement", object(GlobalCategory::WEB));
+    add(g, "SVGScriptElement", object(GlobalCategory::WEB));
+    add(g, "SVGSetElement", object(GlobalCategory::WEB));
+    add(g, "SVGStopElement", object(GlobalCategory::WEB));
+    add(g, "SVGStyleElement", object(GlobalCategory::WEB));
+    add(g, "SVGSVGElement", object(GlobalCategory::WEB));
+    add(g, "SVGSwitchElement", object(GlobalCategory::WEB));
+    add(g, "SVGSymbolElement", object(GlobalCategory::WEB));
+    add(g, "SVGTextContentElement", object(GlobalCategory::WEB));
+    add(g, "SVGTextElement", object(GlobalCategory::WEB));
+    add(g, "SVGTextPathElement", object(GlobalCategory::WEB));
+    add(g, "SVGTextPositioningElement", object(GlobalCategory::WEB));
+    add(g, "SVGTitleElement", object(GlobalCategory::WEB));
+    add(g, "SVGTSpanElement", object(GlobalCategory::WEB));
+    add(g, "SVGUseElement", object(GlobalCategory::WEB));
+    add(g, "SVGViewElement", object(GlobalCategory::WEB));
+    add(g, "SVGAngle", object(GlobalCategory::WEB));
+    add(g, "SVGLength", object(GlobalCategory::WEB));
+    add(g, "SVGLengthList", object(GlobalCategory::WEB));
+    add(g, "SVGNumber", object(GlobalCategory::WEB));
+    add(g, "SVGNumberList", object(GlobalCategory::WEB));
+    add(g, "SVGPreserveAspectRatio", object(GlobalCategory::WEB));
+    add(g, "SVGStringList", object(GlobalCategory::WEB));
+    add(g, "SVGTransform", object(GlobalCategory::WEB));
+    add(g, "SVGTransformList", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedAngle", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedBoolean", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedEnumeration", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedInteger", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedLength", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedLengthList", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedNumber", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedNumberList", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedPreserveAspectRatio", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedRect", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedString", object(GlobalCategory::WEB));
+    add(g, "SVGAnimatedTransformList", object(GlobalCategory::WEB));
+    add(g, "TimeEvent", object(GlobalCategory::WEB));
+    add(g, "ShadowAnimation", object(GlobalCategory::WEB));
+    add(g, "SVGUnitTypes", object(GlobalCategory::WEB));
+    add(g, "SVGUseElementShadowRoot", object(GlobalCategory::WEB));
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/Geometry_interfaces
+    add(
+        g,
+        "DOMMatrix",
+        object(GlobalCategory::WEB)
+            .with_static("fromFloat32Array", object(GlobalCategory::WEB))
+            .with_static("fromFloat64Array", object(GlobalCategory::WEB))
+            .with_static("fromMatrix", object(GlobalCategory::WEB)),
+    );
+    add(
+        g,
+        "DOMMatrixReadOnly",
+        object(GlobalCategory::WEB)
+            .with_static("fromFloat32Array", object(GlobalCategory::WEB))
+            .with_static("fromFloat64Array", object(GlobalCategory::WEB))
+            .with_static("fromMatrix", object(GlobalCategory::WEB)),
+    );
+    add(
+        g,
+        "DOMPoint",
+        object(GlobalCategory::WEB).with_static("fromPoint", object(GlobalCategory::WEB)),
+    );
+    add(
+        g,
+        "DOMPointReadOnly",
+        object(GlobalCategory::WEB).with_static("fromPoint", object(GlobalCategory::WEB)),
+    );
+    add(g, "DOMQuad", object(GlobalCategory::WEB));
+    add(
+        g,
+        "DOMRect",
+        object(GlobalCategory::WEB).with_static("fromRect", object(GlobalCategory::WEB)),
+    );
+    add(
+        g,
+        "DOMRectReadOnly",
+        object(GlobalCategory::WEB).with_static("fromRect", object(GlobalCategory::WEB)),
+    );
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/Selection_API
+    add(g, "Selection", object(GlobalCategory::WEB));
+    add(g, "getSelection", object(GlobalCategory::WEB));
+
+    // Events
+    add(g, "EventTarget", object(GlobalCategory::WEB));
     add(g, "BeforeUnloadEvent", object(GlobalCategory::WEB));
     add(g, "CloseEvent", object(GlobalCategory::WEB));
     add(g, "CommandEvent", object(GlobalCategory::WEB));
     add(g, "CompositionEvent", object(GlobalCategory::WEB));
     add(g, "CustomEvent", object(GlobalCategory::WEB));
-    add(g, "DragEvent", object(GlobalCategory::WEB));
     add(g, "ErrorEvent", object(GlobalCategory::WEB));
     add(g, "FetchEvent", object(GlobalCategory::WEB));
     add(g, "FocusEvent", object(GlobalCategory::WEB));
-    add(g, "FontFaceSetLoadEvent", object(GlobalCategory::WEB));
     add(g, "FormDataEvent", object(GlobalCategory::WEB));
     add(g, "GamepadEvent", object(GlobalCategory::WEB));
     add(g, "HashChangeEvent", object(GlobalCategory::WEB));
     add(g, "InputEvent", object(GlobalCategory::WEB));
-    add(g, "InstallEvent", object(GlobalCategory::WEB));
     add(g, "KeyboardEvent", object(GlobalCategory::WEB));
     add(g, "MessageEvent", object(GlobalCategory::WEB));
     add(g, "MouseEvent", object(GlobalCategory::WEB));
@@ -639,7 +784,6 @@ fn add_globals_web(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "ProgressEvent", object(GlobalCategory::WEB));
     add(g, "PromiseRejectionEvent", object(GlobalCategory::WEB));
     add(g, "SubmitEvent", object(GlobalCategory::WEB));
-    add(g, "TimeEvent", object(GlobalCategory::WEB));
     add(g, "ToggleEvent", object(GlobalCategory::WEB));
     add(g, "TouchEvent", object(GlobalCategory::WEB));
     add(g, "TrackEvent", object(GlobalCategory::WEB));
@@ -648,11 +792,9 @@ fn add_globals_web(g: &mut FxHashMap<&'static str, GlobalValue>) {
 
     add(g, "navigator", object(GlobalCategory::WEB));
     add(g, "document", object(GlobalCategory::WEB));
-    add(g, "crypto", object(GlobalCategory::WEB));
     add(g, "crossOriginIsolated", object(GlobalCategory::WEB));
     add(g, "customElements", object(GlobalCategory::WEB));
     add(g, "frameElement", object(GlobalCategory::WEB));
-    add(g, "history", object(GlobalCategory::WEB));
     add(g, "isSecureContext", object(GlobalCategory::WEB));
     add(g, "localStorage", object(GlobalCategory::WEB));
     add(g, "sessionStorage", object(GlobalCategory::WEB));
@@ -669,11 +811,27 @@ fn add_globals_web(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "requestAnimationFrame", object(GlobalCategory::WEB));
     add(g, "cancelAnimationFrame", object(GlobalCategory::WEB));
 
+    // https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API
+    add(g, "DataTransfer", object(GlobalCategory::WEB));
+    add(g, "DataTransferItem", object(GlobalCategory::WEB));
+    add(g, "DataTransferItemList", object(GlobalCategory::WEB));
+    add(g, "DragEvent", object(GlobalCategory::WEB));
+
+    add(g, "AbortController", object(GlobalCategory::WEB));
+    add(g, "AbortSignal", object(GlobalCategory::WEB));
     add(g, "Blob", object(GlobalCategory::WEB));
     add(g, "FormData", object(GlobalCategory::WEB));
     add(g, "XMLHttpRequest", object(GlobalCategory::WEB));
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
+    add(g, "Headers", object(GlobalCategory::WEB));
     add(g, "Request", object(GlobalCategory::WEB));
+    add(g, "Response", object(GlobalCategory::WEB));
     add(g, "fetch", object(GlobalCategory::WEB));
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API
+    add(g, "WebSocket", object(GlobalCategory::WEB));
+    add(g, "WebSocketStream", object(GlobalCategory::WEB));
 
     // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API
     add(g, "ReadableStream", object(GlobalCategory::WEB));
@@ -695,16 +853,85 @@ fn add_globals_web(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "ClipboardEvent", object(GlobalCategory::WEB));
     add(g, "ClipboardItem", object(GlobalCategory::WEB));
 
+    // https://developer.mozilla.org/en-US/docs/Web/API/History_API
+    add(g, "History", object(GlobalCategory::WEB));
+    add(g, "PopStateEvent", object(GlobalCategory::WEB));
+    add(g, "history", object(GlobalCategory::WEB));
+
     // https://developer.mozilla.org/en-US/docs/Web/API/CSS_Object_Model
-    add(g, "AnimationEvent", object(GlobalCategory::WEB));
     add(g, "CaretPosition", object(GlobalCategory::WEB));
     add(
         g,
         "CSS",
         object(GlobalCategory::WEB)
             .with_static("highlights", object(GlobalCategory::WEB))
-            .with_static("registerProperty", object(GlobalCategory::WEB_TYPED_CSS))
-            .with_static("highlights", object(GlobalCategory::WEB_TYPED_CSS)),
+            .with_static("supports", object(GlobalCategory::WEB))
+            .with_static("escape", object(GlobalCategory::WEB))
+            .with_static("registerProperty", object(GlobalCategory::WEB))
+            .with_static("Hz", object(GlobalCategory::WEB))
+            .with_static("Q", object(GlobalCategory::WEB))
+            .with_static("cap", object(GlobalCategory::WEB))
+            .with_static("ch", object(GlobalCategory::WEB))
+            .with_static("cm", object(GlobalCategory::WEB))
+            .with_static("cbq", object(GlobalCategory::WEB))
+            .with_static("cqh", object(GlobalCategory::WEB))
+            .with_static("cqi", object(GlobalCategory::WEB))
+            .with_static("cqmax", object(GlobalCategory::WEB))
+            .with_static("cqmin", object(GlobalCategory::WEB))
+            .with_static("cqw", object(GlobalCategory::WEB))
+            .with_static("deg", object(GlobalCategory::WEB))
+            .with_static("dpqm", object(GlobalCategory::WEB))
+            .with_static("dpi", object(GlobalCategory::WEB))
+            .with_static("dppx", object(GlobalCategory::WEB))
+            .with_static("dvb", object(GlobalCategory::WEB))
+            .with_static("dvh", object(GlobalCategory::WEB))
+            .with_static("dvi", object(GlobalCategory::WEB))
+            .with_static("dvmax", object(GlobalCategory::WEB))
+            .with_static("dvmin", object(GlobalCategory::WEB))
+            .with_static("dvw", object(GlobalCategory::WEB))
+            .with_static("em", object(GlobalCategory::WEB))
+            .with_static("ex", object(GlobalCategory::WEB))
+            .with_static("fr", object(GlobalCategory::WEB))
+            .with_static("grad", object(GlobalCategory::WEB))
+            .with_static("ic", object(GlobalCategory::WEB))
+            .with_static("in", object(GlobalCategory::WEB))
+            .with_static("kHz", object(GlobalCategory::WEB))
+            .with_static("lh", object(GlobalCategory::WEB))
+            .with_static("lvb", object(GlobalCategory::WEB))
+            .with_static("lvh", object(GlobalCategory::WEB))
+            .with_static("lvi", object(GlobalCategory::WEB))
+            .with_static("lvmax", object(GlobalCategory::WEB))
+            .with_static("lvmin", object(GlobalCategory::WEB))
+            .with_static("lvw", object(GlobalCategory::WEB))
+            .with_static("mm", object(GlobalCategory::WEB))
+            .with_static("ms", object(GlobalCategory::WEB))
+            .with_static("number", object(GlobalCategory::WEB))
+            .with_static("pc", object(GlobalCategory::WEB))
+            .with_static("percent", object(GlobalCategory::WEB))
+            .with_static("pt", object(GlobalCategory::WEB))
+            .with_static("px", object(GlobalCategory::WEB))
+            .with_static("rad", object(GlobalCategory::WEB))
+            .with_static("rcap", object(GlobalCategory::WEB))
+            .with_static("rch", object(GlobalCategory::WEB))
+            .with_static("rem", object(GlobalCategory::WEB))
+            .with_static("rex", object(GlobalCategory::WEB))
+            .with_static("ric", object(GlobalCategory::WEB))
+            .with_static("rlh", object(GlobalCategory::WEB))
+            .with_static("s", object(GlobalCategory::WEB))
+            .with_static("svb", object(GlobalCategory::WEB))
+            .with_static("svh", object(GlobalCategory::WEB))
+            .with_static("svi", object(GlobalCategory::WEB))
+            .with_static("svmax", object(GlobalCategory::WEB))
+            .with_static("svmin", object(GlobalCategory::WEB))
+            .with_static("svw", object(GlobalCategory::WEB))
+            .with_static("turn", object(GlobalCategory::WEB))
+            .with_static("vb", object(GlobalCategory::WEB))
+            .with_static("vh", object(GlobalCategory::WEB))
+            .with_static("vi", object(GlobalCategory::WEB))
+            .with_static("vmax", object(GlobalCategory::WEB))
+            .with_static("vmin", object(GlobalCategory::WEB))
+            .with_static("vw", object(GlobalCategory::WEB))
+            .with_static("paintWorklet", object(GlobalCategory::WEB)),
     );
     add(g, "CSSConditionRule", object(GlobalCategory::WEB));
     add(g, "CSSCounterStyleRule", object(GlobalCategory::WEB));
@@ -740,6 +967,41 @@ fn add_globals_web(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "StyleSheetList", object(GlobalCategory::WEB));
     add(g, "TransitionEvent", object(GlobalCategory::WEB));
     add(g, "VisualViewport", object(GlobalCategory::WEB));
+    // TypedCSS
+    add(g, "CSSPropertyRule", object(GlobalCategory::WEB));
+    add(
+        g,
+        "CSSStyleValue",
+        object(GlobalCategory::WEB)
+            .with_static("parseAll", object(GlobalCategory::WEB))
+            .with_static("parse", object(GlobalCategory::WEB)),
+    );
+    add(g, "CSSImageValue", object(GlobalCategory::WEB));
+    add(g, "CSSKeywordValue", object(GlobalCategory::WEB));
+    add(g, "CSSMathValue", object(GlobalCategory::WEB));
+    add(g, "CSSMathInvert", object(GlobalCategory::WEB));
+    add(g, "CSSMathMax", object(GlobalCategory::WEB));
+    add(g, "CSSMathMin", object(GlobalCategory::WEB));
+    add(g, "CSSMathNegate", object(GlobalCategory::WEB));
+    add(g, "CSSMathProduct", object(GlobalCategory::WEB));
+    add(g, "CSSMathSum", object(GlobalCategory::WEB));
+    add(g, "CSSNumericValue", object(GlobalCategory::WEB));
+    add(g, "CSSNumericArray", object(GlobalCategory::WEB));
+    add(g, "CSSPerspective", object(GlobalCategory::WEB));
+    add(g, "CSSPositionValue", object(GlobalCategory::WEB));
+    add(g, "CSSRotate", object(GlobalCategory::WEB));
+    add(g, "CSSScale", object(GlobalCategory::WEB));
+    add(g, "CSSSkew", object(GlobalCategory::WEB));
+    add(g, "CSSSkewX", object(GlobalCategory::WEB));
+    add(g, "CSSSkewY", object(GlobalCategory::WEB));
+    add(g, "CSSTransformValue", object(GlobalCategory::WEB));
+    add(g, "CSSTransformComponent", object(GlobalCategory::WEB));
+    add(g, "CSSTranslate", object(GlobalCategory::WEB));
+    add(g, "CSSUnitValue", object(GlobalCategory::WEB));
+    add(g, "CSSUnparsedValue", object(GlobalCategory::WEB));
+    add(g, "CSSVariableReferenceValue", object(GlobalCategory::WEB));
+    add(g, "StylePropertyMap", object(GlobalCategory::WEB));
+    add(g, "StylePropertyMapReadOnly", object(GlobalCategory::WEB));
 
     // https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
     add(g, "MutationObserver", object(GlobalCategory::WEB));
@@ -754,6 +1016,20 @@ fn add_globals_web(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "OffscreenCanvas", object(GlobalCategory::WEB));
     add(g, "Path2D", object(GlobalCategory::WEB)); // Experimental
     add(g, "ImageBitmapRenderingContext", object(GlobalCategory::WEB)); // Experimental
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/Web_Animations_API
+    add(g, "Animation", object(GlobalCategory::WEB));
+    add(g, "AnimationEffect", object(GlobalCategory::WEB));
+    add(g, "AnimationEvent", object(GlobalCategory::WEB));
+    add(g, "AnimationTimeline", object(GlobalCategory::WEB));
+    add(g, "AnimationPlaybackEvent", object(GlobalCategory::WEB));
+    add(g, "DocumentTimeline", object(GlobalCategory::WEB));
+    add(g, "KeyframeEffect", object(GlobalCategory::WEB));
+    add(g, "ScrollTimeline", object(GlobalCategory::WEB));
+    add(g, "ViewTimeline", object(GlobalCategory::WEB));
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/Storage_API
+    add(g, "StorageManager", object(GlobalCategory::WEB));
 
     // https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
     add(g, "IDBFactory", object(GlobalCategory::WEB));
@@ -786,7 +1062,6 @@ fn add_globals_web(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "Clients", object(GlobalCategory::WEB));
     add(g, "ExtendableEvent", object(GlobalCategory::WEB));
     add(g, "ExtendableMessageEvent", object(GlobalCategory::WEB));
-    add(g, "FetchEvent", object(GlobalCategory::WEB));
     add(g, "InstallEvent", object(GlobalCategory::WEB));
     add(g, "NavigationPreloadManager", object(GlobalCategory::WEB));
     add(g, "ServiceWorker", object(GlobalCategory::WEB));
@@ -805,6 +1080,16 @@ fn add_globals_web(g: &mut FxHashMap<&'static str, GlobalValue>) {
 
     // https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices
     add(g, "MediaDevices", object(GlobalCategory::WEB));
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/Device_orientation_events
+    add(g, "DeviceMotionEvent", object(GlobalCategory::WEB));
+    add(g, "DeviceMotionEventAcceleration", object(GlobalCategory::WEB));
+    add(g, "DeviceMotionEventRotationRate", object(GlobalCategory::WEB));
+    add(g, "DeviceOrientationEvent", object(GlobalCategory::WEB));
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/Resize_Observer_API
+    add(g, "ResizeObserver", object(GlobalCategory::WEB));
+    add(g, "ResizeObserverEntry", object(GlobalCategory::WEB));
 
     // https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
     add(g, "IntersectionObserver", object(GlobalCategory::WEB));
@@ -829,84 +1114,64 @@ fn add_globals_web(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "TextUpdateEvent", object(GlobalCategory::WEB));
     add(g, "TextFormatUpdateEvent", object(GlobalCategory::WEB));
     add(g, "CharacterBoundsUpdateEvent", object(GlobalCategory::WEB));
-}
 
-fn add_globals_web_typed_css(g: &mut FxHashMap<&'static str, GlobalValue>) {
-    add(g, "CSSPropertyRule", object(GlobalCategory::WEB_TYPED_CSS));
-    add(
-        g,
-        "CSSStyleValue",
-        object(GlobalCategory::WEB_TYPED_CSS)
-            .with_static("parseWEB_TYPED_CSS", object(GlobalCategory::WEB_TYPED_CSS))
-            .with_static("parse", object(GlobalCategory::WEB_TYPED_CSS)),
-    );
-    add(g, "CSSImageValue", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSKeywordValue", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSMathValue", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSMathInvert", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSMathMax", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSMathMin", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSMathNegate", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSMathProduct", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSMathSum", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSNumericValue", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSNumericArray", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSPerspective", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSPositionValue", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSRotate", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSScale", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSSkew", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSSkewX", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSSkewY", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSTransformValue", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSTransformComponent", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSTranslate", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSUnitValue", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSUnparsedValue", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "CSSVariableReferenceValue", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "StylePropertyMap", object(GlobalCategory::WEB_TYPED_CSS));
-    add(g, "StylePropertyMapReadOnly", object(GlobalCategory::WEB_TYPED_CSS));
-}
+    // https://developer.mozilla.org/en-US/docs/Web/API/CSS_Painting_API
+    add(g, "PaintWorkletGlobalScope", object(GlobalCategory::WEB));
+    add(g, "PaintRenderingContext2D", object(GlobalCategory::WEB));
+    add(g, "PaintSize", object(GlobalCategory::WEB));
 
-// https://developer.mozilla.org/en-US/docs/Web/API/Background_Fetch_API
-fn add_globals_web_background_fetch(g: &mut FxHashMap<&'static str, GlobalValue>) {
-    add(g, "BackgroundFetchManager", object(GlobalCategory::WEB_BACKGROUND_FETCH));
-    add(g, "BackgroundFetchRegistration", object(GlobalCategory::WEB_BACKGROUND_FETCH));
-    add(g, "BackgroundFetchRecord", object(GlobalCategory::WEB_BACKGROUND_FETCH));
-    add(g, "BackgroundFetchEvent", object(GlobalCategory::WEB_BACKGROUND_FETCH));
-    add(g, "BackgroundFetchUIEvent", object(GlobalCategory::WEB_BACKGROUND_FETCH));
-}
+    // https://developer.mozilla.org/en-US/docs/Web/API/Background_Fetch_API
+    add(g, "BackgroundFetchManager", object(GlobalCategory::WEB));
+    add(g, "BackgroundFetchRegistration", object(GlobalCategory::WEB));
+    add(g, "BackgroundFetchRecord", object(GlobalCategory::WEB));
+    add(g, "BackgroundFetchEvent", object(GlobalCategory::WEB));
+    add(g, "BackgroundFetchUIEvent", object(GlobalCategory::WEB));
 
-// https://developer.mozilla.org/en-US/docs/Web/API/Background_Synchronization_API
-fn add_globals_web_sync(g: &mut FxHashMap<&'static str, GlobalValue>) {
-    add(g, "SyncManager", object(GlobalCategory::WEB_SYNC));
-    add(g, "SyncEvent", object(GlobalCategory::WEB_SYNC));
-}
+    // https://developer.mozilla.org/en-US/docs/Web/API/Background_Synchronization_API
+    add(g, "SyncManager", object(GlobalCategory::WEB));
+    add(g, "SyncEvent", object(GlobalCategory::WEB));
 
-// https://developer.mozilla.org/en-US/docs/Web/API/Battery_Status_API
-fn add_globals_web_battery(g: &mut FxHashMap<&'static str, GlobalValue>) {
-    add(g, "BatteryManager", object(GlobalCategory::WEB_BATTERY));
-}
+    // https://developer.mozilla.org/en-US/docs/Web/API/Battery_Status_API
+    add(g, "BatteryManager", object(GlobalCategory::WEB));
 
-// https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API
-fn add_globals_web_barcode(g: &mut FxHashMap<&'static str, GlobalValue>) {
-    add(g, "BarcodeDetector", object(GlobalCategory::WEB_BARCODE));
-}
+    // https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API
+    add(g, "BarcodeDetector", object(GlobalCategory::WEB));
 
-// https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API
-fn add_globals_web_bluetooth(g: &mut FxHashMap<&'static str, GlobalValue>) {
-    add(g, "Bluetooth", object(GlobalCategory::WEB_BLUETOOTH));
-    add(g, "BluetoothCharacteristicProperties", object(GlobalCategory::WEB_BLUETOOTH));
-    add(g, "BluetoothDevice", object(GlobalCategory::WEB_BLUETOOTH));
-    add(g, "BluetoothRemoteGATTCharacteristic", object(GlobalCategory::WEB_BLUETOOTH));
-    add(g, "BluetoothRemoteGATTDescriptor", object(GlobalCategory::WEB_BLUETOOTH));
-    add(g, "BluetoothRemoteGATTServer", object(GlobalCategory::WEB_BLUETOOTH));
-    add(g, "BluetoothRemoteGATTService", object(GlobalCategory::WEB_BLUETOOTH));
-}
+    // https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API
+    add(g, "Bluetooth", object(GlobalCategory::WEB));
+    add(g, "BluetoothCharacteristicProperties", object(GlobalCategory::WEB));
+    add(g, "BluetoothDevice", object(GlobalCategory::WEB));
+    add(g, "BluetoothRemoteGATTCharacteristic", object(GlobalCategory::WEB));
+    add(g, "BluetoothRemoteGATTDescriptor", object(GlobalCategory::WEB));
+    add(g, "BluetoothRemoteGATTServer", object(GlobalCategory::WEB));
+    add(g, "BluetoothRemoteGATTService", object(GlobalCategory::WEB));
 
-// https://developer.mozilla.org/en-US/docs/Web/API/CSS_Painting_API
-fn add_globals_web_paint(g: &mut FxHashMap<&'static str, GlobalValue>) {
-    add(g, "PaintWorkletGlobalScope", object(GlobalCategory::WEB_PAINT));
-    add(g, "PaintRenderingContext2D", object(GlobalCategory::WEB_PAINT));
-    add(g, "PaintSize", object(GlobalCategory::WEB_PAINT));
+    // https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API
+    add(g, "Crypto", object(GlobalCategory::WEB));
+    add(g, "SubtleCrypto", object(GlobalCategory::WEB));
+    add(g, "CryptoKey", object(GlobalCategory::WEB));
+    add(g, "AesCbcParams", object(GlobalCategory::WEB));
+    add(g, "AesCtrParams", object(GlobalCategory::WEB));
+    add(g, "AesGcmParams", object(GlobalCategory::WEB));
+    add(g, "AesKeyGenParams", object(GlobalCategory::WEB));
+    add(g, "CryptoKeyPair", object(GlobalCategory::WEB));
+    add(g, "EcKeyGenParams", object(GlobalCategory::WEB));
+    add(g, "EcKeyImportParams", object(GlobalCategory::WEB));
+    add(g, "EcdhKeyDeriveParams", object(GlobalCategory::WEB));
+    add(g, "EcdsaParams", object(GlobalCategory::WEB));
+    add(g, "HkdfParams", object(GlobalCategory::WEB));
+    add(g, "HmacImportParams", object(GlobalCategory::WEB));
+    add(g, "HmacKeyGenParams", object(GlobalCategory::WEB));
+    add(g, "Pbkdf2Params", object(GlobalCategory::WEB));
+    add(g, "RsaHashedImportParams", object(GlobalCategory::WEB));
+    add(g, "RsaHashedKeyGenParams", object(GlobalCategory::WEB));
+    add(g, "RsaOaepParams", object(GlobalCategory::WEB));
+    add(g, "RsaPssParams", object(GlobalCategory::WEB));
+    add(g, "crypto", object(GlobalCategory::WEB));
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API
+    add(g, "Geolocation", object(GlobalCategory::WEB));
+    add(g, "GeolocationPosition", object(GlobalCategory::WEB));
+    add(g, "GeolocationCoordinates", object(GlobalCategory::WEB));
+    add(g, "GeolocationPositionError", object(GlobalCategory::WEB));
 }
