@@ -10,7 +10,6 @@ regex = { version = "1.11", default-features = false, features = [
   "perf",
 ] }
 sha1 = "0.10"
-indexmap = { version = "2.10", features = ["serde"] }
 dashmap = "7.0.0-rc2"
 serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
