@@ -48,6 +48,9 @@ fn walk_expr<'a>(
         Expression::TaggedTemplateExpression(node) => {
             walk_tagged_template_expression(state, w, node, scoping, address)
         }
+        Expression::StaticMemberExpression(node) => {
+            walk_static_member_expression(state, w, node, scoping, address)
+        }
         Expression::MetaProperty(_)
         | Expression::Super(_)
         | Expression::ArrowFunctionExpression(_)
@@ -76,7 +79,6 @@ fn walk_expr<'a>(
         | Expression::TSInstantiationExpression(_)
         | Expression::V8IntrinsicExpression(_)
         | Expression::ComputedMemberExpression(_)
-        | Expression::StaticMemberExpression(_)
         | Expression::PrivateFieldExpression(_) => None,
     }
 }
@@ -363,6 +365,28 @@ fn walk_tagged_template_expression<'a>(
     Some(())
 }
 
+fn walk_static_member_expression<'a>(
+    state: &mut DedupeState,
+    w: Option<&mut CoreWrapper<Sha1Core>>,
+    node: &StaticMemberExpression<'a>,
+    scoping: &Scoping,
+    address: Address,
+) -> Option<()> {
+    let mut h = Sha1::default();
+    h.update(Tag::StaticMemberExpression.to_ne_bytes());
+    walk_expr(state, Some(&mut h), &node.object, scoping, address)?;
+    walk_identifier_name(Some(&mut h), &node.property)?;
+
+    let hash = h.finalize();
+    state.add(address, hash.into());
+
+    if let Some(w) = w {
+        w.update(Tag::Hash.to_ne_bytes());
+        w.update(hash);
+    }
+    Some(())
+}
+
 fn walk_parenthesized_expression<'a>(
     state: &mut DedupeState,
     w: Option<&mut CoreWrapper<Sha1Core>>,
@@ -549,6 +573,7 @@ enum Tag {
     TemplateLiteral,
     TemplateElement,
     TaggedTemplateExpression,
+    StaticMemberExpression,
     IdentifierReferenceSymbol,
     IdentifierReferenceGlobal,
     ArrayExpression,
