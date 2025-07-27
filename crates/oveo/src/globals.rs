@@ -74,7 +74,6 @@ pub enum GlobalValueKind {
     #[default]
     Object,
     Func(GlobalFunction),
-    Const(serde_json::Value),
 }
 
 impl GlobalValue {
@@ -92,14 +91,7 @@ impl GlobalValue {
 
 #[derive(Clone)]
 pub struct GlobalFunction {
-    pub arguments: Vec<GlobalFunctionArgument>,
     pub singleton: bool,
-    pub hoist: bool,
-}
-
-#[derive(Clone)]
-pub struct GlobalFunctionArgument {
-    pub hoist: bool,
 }
 
 struct GlobalObjectBuilder {
@@ -150,9 +142,7 @@ fn object(category: GlobalCategory) -> GlobalObjectBuilder {
 }
 
 struct GlobalFunctionBuilder {
-    pub arguments: Vec<GlobalFunctionArgument>,
     pub singleton: bool,
-    pub hoist: bool,
 }
 
 impl GlobalFunctionBuilder {
@@ -166,12 +156,12 @@ impl Build for GlobalFunctionBuilder {
     type Output = GlobalFunction;
 
     fn build(self) -> Self::Output {
-        GlobalFunction { arguments: self.arguments, singleton: self.singleton, hoist: self.hoist }
+        GlobalFunction { singleton: self.singleton }
     }
 }
 
 fn func() -> GlobalFunctionBuilder {
-    GlobalFunctionBuilder { arguments: Vec::default(), singleton: false, hoist: true }
+    GlobalFunctionBuilder { singleton: false }
 }
 
 fn add<T: Build<Output = GlobalValue>>(
