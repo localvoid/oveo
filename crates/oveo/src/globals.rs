@@ -792,6 +792,9 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
 
     add(g, "navigator", object(GlobalCategory::WEB));
     add(g, "document", object(GlobalCategory::WEB));
+    add(g, "structuredClone", object(GlobalCategory::WEB));
+    add(g, "atob", object(GlobalCategory::WEB));
+    add(g, "btoa", object(GlobalCategory::WEB));
     add(g, "crossOriginIsolated", object(GlobalCategory::WEB));
     add(g, "customElements", object(GlobalCategory::WEB));
     add(g, "frameElement", object(GlobalCategory::WEB));
@@ -801,12 +804,31 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "trustedTypes", object(GlobalCategory::WEB));
     add(g, "setTimeout", object(GlobalCategory::WEB));
     add(g, "clearTimeout", object(GlobalCategory::WEB));
+    add(g, "setInterval", object(GlobalCategory::WEB));
+    add(g, "clearInterval", object(GlobalCategory::WEB));
     add(g, "queueMicrotask", object(GlobalCategory::WEB));
     add(g, "performance", object(GlobalCategory::WEB));
+    add(g, "open", object(GlobalCategory::WEB));
+    add(g, "close", object(GlobalCategory::WEB));
+    add(g, "stop", object(GlobalCategory::WEB));
+    add(g, "confirm", object(GlobalCategory::WEB));
+    add(g, "focus", object(GlobalCategory::WEB));
+    add(g, "moveBy", object(GlobalCategory::WEB));
+    add(g, "moveTo", object(GlobalCategory::WEB));
+    add(g, "createImageBitmap", object(GlobalCategory::WEB));
+    add(g, "print", object(GlobalCategory::WEB));
+    add(g, "prompt", object(GlobalCategory::WEB));
+    add(g, "reportError", object(GlobalCategory::WEB));
+    add(g, "resizeBy", object(GlobalCategory::WEB));
+    add(g, "resizeTo", object(GlobalCategory::WEB));
+    add(g, "scroll", object(GlobalCategory::WEB));
+    add(g, "scrollBy", object(GlobalCategory::WEB));
+    add(g, "scrollTo", object(GlobalCategory::WEB));
 
     add(g, "MessageChannel", object(GlobalCategory::WEB));
     add(g, "MessagePort", object(GlobalCategory::WEB));
     add(g, "BroadcastChannel", object(GlobalCategory::WEB));
+    add(g, "postMessage", object(GlobalCategory::WEB));
 
     add(g, "requestAnimationFrame", object(GlobalCategory::WEB));
     add(g, "cancelAnimationFrame", object(GlobalCategory::WEB));
@@ -820,6 +842,7 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "AbortController", object(GlobalCategory::WEB));
     add(g, "AbortSignal", object(GlobalCategory::WEB));
     add(g, "Blob", object(GlobalCategory::WEB));
+    add(g, "VideoFrame", object(GlobalCategory::WEB));
     add(g, "FormData", object(GlobalCategory::WEB));
     add(g, "XMLHttpRequest", object(GlobalCategory::WEB));
 
@@ -859,6 +882,8 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "history", object(GlobalCategory::WEB));
 
     // https://developer.mozilla.org/en-US/docs/Web/API/CSS_Object_Model
+    add(g, "getComputedStyle", object(GlobalCategory::WEB));
+    add(g, "matchMedia", object(GlobalCategory::WEB));
     add(g, "CaretPosition", object(GlobalCategory::WEB));
     add(
         g,
