@@ -16,7 +16,7 @@ mod base54;
 
 pub struct PropertyMap {
     regex: Option<regex::Regex>,
-    index: DashMap<String, Arc<str>>,
+    index: DashMap<Box<str>, Arc<str>>,
     used: Mutex<FxHashSet<Arc<str>>>,
     next_id: AtomicU32,
 }
@@ -57,7 +57,7 @@ impl PropertyMap {
                         )));
                     };
                     let v: Arc<str> = value.into();
-                    self.index.insert(key.to_string(), v.clone());
+                    self.index.insert(key.into(), v.clone());
                     used.insert(v);
                 }
             }
@@ -101,7 +101,7 @@ impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
         match self.cache.entry(key) {
             hash_map::Entry::Occupied(cache_entry) => *cache_entry.get(),
             hash_map::Entry::Vacant(cache_entry) => {
-                let uid = match self.map.index.entry(key.to_string()) {
+                let uid = match self.map.index.entry(key.as_str().into()) {
                     dashmap::Entry::Occupied(index_entry) => Some(ast.atom(index_entry.get())),
                     dashmap::Entry::Vacant(index_entry) => {
                         if !self.map.matches(key.as_str()) {
