@@ -350,7 +350,9 @@ And after minification (constant evaluation), class names will have an [interned
 
 ### Rename Properties
 
-This optimization works during chunk transformation phase and renames property names that match properties from a predefined propery map.
+This optimization works during chunk transformation phase and renames property names that match a regexp pattern or properties from a property map.
+
+When bundler finishes building all chunks, it will add new properties matching regexp pattern to a property map.
 
 Property map has a simple `key=value` format:
 
@@ -401,6 +403,10 @@ Creates a new hoisting scope.
 #### `dedupe(expr)`
 
 Deduplicates expressions.
+
+#### `key(string_literal)`
+
+Renames string literal as a property name.
 
 ## Externs
 
