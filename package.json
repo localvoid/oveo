@@ -10,6 +10,6 @@
     "@napi-rs/cli": "^3.0.4",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "typescript": "^5.8.3",
-    "rollup": "^4.45.1"
+    "rollup": "^4.46.0"
   }
 }
