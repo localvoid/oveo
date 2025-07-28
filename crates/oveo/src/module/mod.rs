@@ -314,17 +314,14 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                     let root_scope_id = ctx.scoping().root_scope_id();
                     let scope_id = ctx.current_hoist_scope_id();
                     if root_scope_id != scope_id {
-                        if let Some(expr) = node.as_expression() {
-                            match expr {
-                                Expression::ArrowFunctionExpression(_)
-                                | Expression::FunctionExpression(_)
-                                | Expression::NewExpression(_)
-                                | Expression::ObjectExpression(_)
-                                | Expression::ArrayExpression(_)
-                                | Expression::TaggedTemplateExpression(_)
-                                | Expression::CallExpression(_) => {}
-                                _ => return,
-                            };
+                        if let Expression::ArrowFunctionExpression(_)
+                        | Expression::FunctionExpression(_)
+                        | Expression::NewExpression(_)
+                        | Expression::ObjectExpression(_)
+                        | Expression::ArrayExpression(_)
+                        | Expression::TaggedTemplateExpression(_)
+                        | Expression::CallExpression(_) = node.to_expression()
+                        {
                             self.hoistable_expr_stack.push(HoistExpr {
                                 address,
                                 outermost_scope_id: root_scope_id,
