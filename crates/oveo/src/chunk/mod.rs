@@ -10,7 +10,7 @@ mod dedupe;
 use crate::{
     OptimizerOptions,
     annotation::Annotation,
-    chunk::dedupe::{DedupeState, dedupe_hash},
+    chunk::dedupe::{DedupeKind, DedupeState, dedupe_hash},
     context::{TraverseCtx, TraverseCtxState},
     globals::{GlobalValue, get_global_value},
     property_names::LocalPropertyMap,
@@ -308,18 +308,26 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for Dedupe<'a> {
 
     fn exit_expression(&mut self, node: &mut Expression<'a>, ctx: &mut TraverseCtx<'a>) {
         let address = node.address();
-        if let Some(r) = self.state.expressions.get(&address) {
-            if let Some(original_address) = r {
-                if let Some(id) = self.originals.get(original_address) {
-                    *node = id.create_read_expression(ctx);
+        if let Some(dedupe_kind) = self.state.expressions.get(&address) {
+            match dedupe_kind {
+                DedupeKind::Original(duplicates) => {
+                    if *duplicates > 0
+                        && let Some(statement_address) = self.statement_stack.last()
+                    {
+                        let uid =
+                            ctx.generate_uid_in_root_scope("_DEDUPE_", SymbolFlags::ConstVariable);
+                        let mut expr2 = uid.create_read_expression(ctx);
+                        std::mem::swap(node, &mut expr2);
+                        let decl = stmt_const_decl(&uid, expr2, ctx);
+                        self.statements.insert_before(statement_address, decl);
+                        self.originals.insert(address, uid);
+                    }
                 }
-            } else if let Some(statement_address) = self.statement_stack.last() {
-                let uid = ctx.generate_uid_in_root_scope("_DEDUPE_", SymbolFlags::ConstVariable);
-                let mut expr2 = uid.create_read_expression(ctx);
-                std::mem::swap(node, &mut expr2);
-                let decl = stmt_const_decl(&uid, expr2, ctx);
-                self.statements.insert_before(statement_address, decl);
-                self.originals.insert(address, uid);
+                DedupeKind::Duplicate(original_address) => {
+                    if let Some(id) = self.originals.get(original_address) {
+                        *node = id.create_read_expression(ctx);
+                    }
+                }
             }
         }
     }
