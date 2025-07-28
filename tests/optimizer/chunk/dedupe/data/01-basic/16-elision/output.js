@@ -1,12 +1,13 @@
 const _DEDUPE_ = [
 	1,
-	2,
-	3
+	,
+	2
 ];
 _DEDUPE_;
 _DEDUPE_;
 [
 	1,
-	3,
+	,
+	,
 	2
 ];
