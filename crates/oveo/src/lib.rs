@@ -81,10 +81,8 @@ pub fn optimize_module(
 
     let result = Codegen::new()
         .with_options(CodegenOptions {
-            single_quote: false,
-            minify: false,
-            comments: CommentOptions::default(),
             source_map_path: Some(PathBuf::new()),
+            ..Default::default()
         })
         .build(&program);
 
@@ -125,10 +123,8 @@ pub fn optimize_chunk(
 
     let result = Codegen::new()
         .with_options(CodegenOptions {
-            single_quote: false,
-            minify: false,
-            comments: CommentOptions::default(),
             source_map_path: Some(PathBuf::new()),
+            ..Default::default()
         })
         .build(&program);
 
