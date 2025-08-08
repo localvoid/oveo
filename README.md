@@ -1,4 +1,4 @@
-[oveo](https://github.com/localvoid/oveo) is a javascript optimizer that works as a plugin for [Vite](https://vite.dev/) and [Rollup](https://rollupjs.org/). It is written in Rust and uses [oxc](https://github.com/oxc-project/oxc/) library for parsing and semantic analysis.
+[oveo](https://github.com/localvoid/oveo) is a javascript optimizer that works as a plugin for [Vite](https://vite.dev/), [Rollup](https://rollupjs.org/) and [Rolldown](https://rolldown.rs/). It is written in Rust and uses [oxc](https://github.com/oxc-project/oxc/) library for parsing and semantic analysis.
 
 > **Use with caution!**
 >
@@ -37,6 +37,8 @@ export default defineConfig({
   ]
 });
 ```
+
+> Vite setup with rolldown integration should use the `@oveo/rolldown` plugin.
 
 ## Optimizations
 
