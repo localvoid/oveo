@@ -25,9 +25,14 @@ for (const entry of entries) {
       expect(normalizeNewlines(chunkResult.code)).toBe(normalizeNewlines(await output.text()));
 
       const propsExport = Bun.file(path.join(units, entry, "props-export.ini"));
+      const newPropsData = optimizer.updatePropertyMap();
+
       if (await propsExport.exists()) {
-        expect(decoder.decode(optimizer.exportPropertyMap()))
+        expect(newPropsData).not.toBe(null);
+        expect(decoder.decode(newPropsData!))
           .toBe(normalizeNewlines(await propsExport.text()));
+      } else {
+        expect(newPropsData).toBe(null);
       }
     });
   } catch (err) { }
