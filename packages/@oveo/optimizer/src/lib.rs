@@ -124,9 +124,9 @@ impl Optimizer {
     }
 
     #[napi]
-    pub fn export_property_map(&mut self) -> Uint8Array {
+    pub fn update_property_map(&mut self) -> Option<Uint8Array> {
         let map = self.inner.property_map.read().unwrap();
-        map.export().into()
+        if map.is_dirty() { Some(map.export().into()) } else { None }
     }
 
     #[napi(ts_return_type = "Promise<OptimizerOutput>")]

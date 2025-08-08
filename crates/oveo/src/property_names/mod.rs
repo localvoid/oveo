@@ -67,6 +67,10 @@ impl PropertyMap {
         Ok(())
     }
 
+    pub fn is_dirty(&self) -> bool {
+        self.used.lock().unwrap().next_id != 0
+    }
+
     pub fn export(&self) -> Vec<u8> {
         let mut props = Vec::new();
         for i in self.index.iter() {

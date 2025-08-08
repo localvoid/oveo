@@ -1,4 +1,3 @@
-import { hash } from "node:crypto";
 import * as fs from "node:fs/promises";
 import type { Plugin } from "rollup";
 import { createFilter, type FilterPattern } from "@rollup/pluginutils";
@@ -93,18 +92,10 @@ export function oveo(options: PluginOptions = {}): Plugin & { apply?: "build"; }
       const propertyMap = options.renameProperties?.map;
       // If minified names are generated dynamically
       if (propertyMap && options.renameProperties?.pattern !== void 0) {
-        const newData = opt.exportPropertyMap();
-        // Avoid writing when property map hasn't changed.
-        if (
-          propertyMapData !== void 0 &&
-          (
-            propertyMapData.length !== newData.length ||
-            hash("sha1", propertyMapData) !== hash("sha1", newData)
-          )
-        ) {
-          propertyMapData = newData;
+        const newData = opt.updatePropertyMap();
+        if (newData) {
           try {
-            await fs.writeFile(propertyMap, newData);
+            await this.fs.writeFile(propertyMap, newData);
           } catch (err) {
             this.warn(`Unable to update property map file '${propertyMap}': ${err}`);
           }

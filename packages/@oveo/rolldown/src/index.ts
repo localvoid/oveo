@@ -1,5 +1,4 @@
 import type { HookFilter, RolldownPlugin } from "rolldown";
-import { hash } from "node:crypto";
 import { Optimizer, type OptimizerOptions } from "@oveo/optimizer";
 
 export interface PluginOptions extends OptimizerOptions {
@@ -87,16 +86,8 @@ export function oveo(options: PluginOptions = {}): RolldownPlugin {
       const propertyMap = options.renameProperties?.map;
       // If minified names are generated dynamically
       if (propertyMap && options.renameProperties?.pattern !== void 0) {
-        const newData = opt.exportPropertyMap();
-        // Avoid writing when property map hasn't changed.
-        if (
-          propertyMapData !== void 0 &&
-          (
-            propertyMapData.length !== newData.length ||
-            hash("sha1", propertyMapData) !== hash("sha1", newData)
-          )
-        ) {
-          propertyMapData = newData;
+        const newData = opt.updatePropertyMap();
+        if (newData) {
           try {
             await this.fs.writeFile(propertyMap, newData);
           } catch (err) {

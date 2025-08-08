@@ -4,7 +4,7 @@ export declare class Optimizer {
   constructor(options?: OptimizerOptions | undefined | null)
   importExterns(data: Uint8Array): void
   importPropertyMap(data: Uint8Array): void
-  exportPropertyMap(): Uint8Array
+  updatePropertyMap(): Uint8Array | null
   optimizeModule(sourceText: string, moduleType: string): Promise<OptimizerOutput>
   optimizeChunk(sourceText: string): Promise<OptimizerOutput>
 }
