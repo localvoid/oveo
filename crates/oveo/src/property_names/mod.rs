@@ -1,13 +1,8 @@
-use std::{
-    collections::hash_map,
-    sync::{
-        Arc, Mutex,
-        atomic::{self, AtomicU32},
-    },
-};
+use std::{collections::hash_map, sync::Mutex};
 
 use dashmap::DashMap;
 use oxc_ast::{AstBuilder, ast::*};
+use oxc_span::CompactStr;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{OptimizerError, property_names::base54::base54};
@@ -16,23 +11,30 @@ mod base54;
 
 pub struct PropertyMap {
     regex: Option<regex::Regex>,
-    index: DashMap<Box<str>, Arc<str>>,
-    used: Mutex<FxHashSet<Arc<str>>>,
-    next_id: AtomicU32,
+    index: DashMap<Box<str>, CompactStr>,
+    used: Mutex<UsedIds>,
+}
+
+#[derive(Default)]
+struct UsedIds {
+    index: FxHashSet<CompactStr>,
+    next_id: u32,
 }
 
 impl PropertyMap {
     pub fn new(regex: Option<regex::Regex>) -> Self {
-        let used = Mutex::default();
-        add_reserved_keywords(&mut used.lock().unwrap());
+        let used = Mutex::new(UsedIds::default());
+        add_reserved_keywords(&mut used.lock().unwrap().index);
 
-        Self { regex, index: DashMap::default(), used, next_id: AtomicU32::new(0) }
+        Self { regex, index: DashMap::default(), used }
     }
 
     pub fn import(&mut self, data: &[u8]) -> Result<(), OptimizerError> {
         {
             let mut used = self.used.lock().unwrap();
-            self.next_id.store(0, atomic::Ordering::SeqCst);
+            used.next_id = 0;
+            used.index.clear();
+            self.index.clear();
 
             for (i, line) in data.split(|c| *c == b'\n').enumerate() {
                 let line = line.trim_ascii();
@@ -56,9 +58,9 @@ impl PropertyMap {
                             i + 1
                         )));
                     };
-                    let v: Arc<str> = value.into();
-                    self.index.insert(key.into(), Arc::clone(&v));
-                    used.insert(v);
+                    let v: CompactStr = value.into();
+                    self.index.insert(key.into(), v.clone());
+                    used.index.insert(v);
                 }
             }
         }
@@ -109,10 +111,11 @@ impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
                         } else {
                             let mut used = self.map.used.lock().unwrap();
                             let uid = loop {
-                                let i = self.map.next_id.fetch_add(1, atomic::Ordering::SeqCst);
+                                let i = used.next_id;
+                                used.next_id += 1;
                                 let s = base54(i);
-                                let uid: Arc<str> = Arc::from(s.as_str());
-                                if used.insert(Arc::clone(&uid)) {
+                                let uid: CompactStr = s.as_str().into();
+                                if used.index.insert(uid.clone()) {
                                     index_entry.insert(uid);
                                     break ast.atom(&s);
                                 }
@@ -128,7 +131,7 @@ impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
     }
 }
 
-fn add_reserved_keywords(index: &mut FxHashSet<Arc<str>>) {
+fn add_reserved_keywords(index: &mut FxHashSet<CompactStr>) {
     index.insert("as".into());
     index.insert("do".into());
     index.insert("if".into());
