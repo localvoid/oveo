@@ -136,8 +136,16 @@ impl Optimizer {
     }
 
     #[napi(ts_return_type = "Promise<OptimizerOutput>")]
-    pub fn optimize_module(&self, source_text: String) -> AsyncTask<OptimizeModuleTask> {
-        AsyncTask::new(OptimizeModuleTask { optimizer: self.inner.clone(), source_text })
+    pub fn optimize_module(
+        &self,
+        source_text: String,
+        module_type: String,
+    ) -> AsyncTask<OptimizeModuleTask> {
+        AsyncTask::new(OptimizeModuleTask {
+            optimizer: self.inner.clone(),
+            source_text,
+            module_type,
+        })
     }
 
     #[napi(ts_return_type = "Promise<OptimizerOutput>")]
@@ -149,6 +157,7 @@ impl Optimizer {
 pub struct OptimizeModuleTask {
     optimizer: Arc<OptimizerState>,
     source_text: String,
+    module_type: String,
 }
 
 impl Task for OptimizeModuleTask {
@@ -157,7 +166,7 @@ impl Task for OptimizeModuleTask {
 
     fn compute(&mut self) -> Result<Self::Output> {
         let externs = self.optimizer.externs.read().unwrap();
-        optimize_module(&self.source_text, &self.optimizer.options, &externs)
+        optimize_module(&self.source_text, &self.module_type, &self.optimizer.options, &externs)
             .map(|v| OptimizerOutput { code: v.code, map: v.map })
             .map_err(|err| Error::from_reason(err.to_string()))
     }

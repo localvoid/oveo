@@ -1,0 +1,38 @@
+{
+  "name": "@oveo/rolldown",
+  "version": "0.2.1",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "!dist/**/*.tsbuildinfo",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "rm -rf tsconfig.tsbuildinfo ./dist ./node_modules"
+  },
+  "dependencies": {
+    "@oveo/optimizer": "workspace:*"
+  },
+  "optionalDependencies": {
+    "oveo": "workspace:*"
+  },
+  "description": "Rolldown plugin for oveo optimizer",
+  "license": "MIT",
+  "keywords": [
+    "oveo",
+    "rolldown-plugin"
+  ],
+  "author": "Boris Kaul <localvoid@gmail.com> (https://github.com/localvoid)",
+  "homepage": "https://github.com/localvoid/oveo",
+  "bugs": "https://github.com/localvoid/oveo/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/localvoid/oveo.git"
+  }
+}

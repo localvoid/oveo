@@ -47,6 +47,8 @@ pub struct OptimizerOutput {
 
 #[derive(Debug, thiserror::Error)]
 pub enum OptimizerError {
+    #[error("Invalid module type: {0}")]
+    ModuleType(String),
     #[error("Unable to parse javascript file: {0}")]
     SyntaxError(String),
     #[error("Unable to parse javascript file: {0}")]
@@ -59,11 +61,18 @@ pub enum OptimizerError {
 
 pub fn optimize_module(
     source_text: &str,
+    module_type: &str,
     options: &OptimizerOptions,
     externs: &ExternMap,
 ) -> Result<OptimizerOutput, OptimizerError> {
     let allocator = Allocator::default();
-    let source_type = SourceType::tsx();
+    let source_type = match module_type {
+        "js" => SourceType::mjs(),
+        "jsx" => SourceType::jsx(),
+        "ts" => SourceType::ts(),
+        "tsx" => SourceType::tsx(),
+        _ => return Err(OptimizerError::ModuleType(module_type.to_string())),
+    };
     let ret = Parser::new(&allocator, source_text, source_type).parse();
     if let Some(err) = ret.errors.first() {
         return Err(OptimizerError::SyntaxError(err.to_string()));
@@ -98,7 +107,7 @@ pub fn optimize_chunk(
     property_map: &PropertyMap,
 ) -> Result<OptimizerOutput, OptimizerError> {
     let allocator = Allocator::default();
-    let source_type = SourceType::tsx();
+    let source_type = SourceType::mjs();
     let ret = Parser::new(&allocator, source_text, source_type).parse();
     if let Some(err) = ret.errors.first() {
         return Err(OptimizerError::SyntaxError(err.to_string()));

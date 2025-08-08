@@ -1,29 +1,18 @@
+import type { HookFilter, RolldownPlugin } from "rolldown";
 import { hash } from "node:crypto";
-import * as fs from "node:fs/promises";
-import type { Plugin } from "rollup";
-import { createFilter, type FilterPattern } from "@rollup/pluginutils";
 import { Optimizer, type OptimizerOptions } from "@oveo/optimizer";
 
 export interface PluginOptions extends OptimizerOptions {
-  readonly include?: FilterPattern | undefined;
-  readonly exclude?: FilterPattern | undefined;
+  readonly filter?: HookFilter,
   readonly externs?: { inlineConstValues?: boolean, import?: string[]; },
   readonly renameProperties?: { pattern?: string, map?: string; },
 }
 
-// `Plugin & { apply?: "build"; }` is a workaround to avoid installing Vite with
-// a lot of dependencies.
-export function oveo(options: PluginOptions = {}): Plugin & { apply?: "build"; } {
-  const filter = createFilter(
-    options?.include ?? /\.(m?js|m?tsx?)$/,
-    options?.exclude,
-  );
-
+export function oveo(options: PluginOptions = {}): RolldownPlugin {
   let opt: Optimizer;
   let propertyMapData: Uint8Array | undefined;
   return {
     name: "oveo:optimizer",
-    apply: "build",
 
     async buildStart() {
       opt = new Optimizer(options);
@@ -32,7 +21,7 @@ export function oveo(options: PluginOptions = {}): Plugin & { apply?: "build"; }
       if (propertyMap) {
         this.addWatchFile(propertyMap);
         try {
-          propertyMapData = await fs.readFile(propertyMap);
+          propertyMapData = await this.fs.readFile(propertyMap);
           try {
             opt.importPropertyMap(propertyMapData);
           } catch (err) {
@@ -53,7 +42,7 @@ export function oveo(options: PluginOptions = {}): Plugin & { apply?: "build"; }
           if (resolved) {
             this.addWatchFile(resolved.id);
             try {
-              const data = await fs.readFile(resolved.id);
+              const data = await this.fs.readFile(resolved.id);
               opt.importExterns(data);
             } catch (err) {
               this.warn(`Unable to import extern file '${extern}': ${err}`);
@@ -65,28 +54,33 @@ export function oveo(options: PluginOptions = {}): Plugin & { apply?: "build"; }
       }
     },
 
-    async transform(code, id) {
-      if (filter(id)) {
+    transform: {
+      filter: options.filter ?? {
+        moduleType: ["js", "jsx", "ts", "tsx"],
+      },
+      async handler(code, id, { moduleType }) {
         try {
-          const result = await opt.optimizeModule(code, "tsx");
+          const result = await opt.optimizeModule(code, moduleType);
           const map = result.map;
           code = result.code;
           return map ? { code, map } : { code };
         } catch (err) {
           this.error(`Unable to transform module '${id}': ${err}`);
         }
-      }
+      },
     },
 
-    async renderChunk(code) {
-      try {
-        const result = await opt.optimizeChunk(code);
-        const map = result.map;
-        code = result.code;
-        return map ? { code, map } : { code };
-      } catch (err) {
-        this.error(`Unable to optimize chunk file: ${err}`);
-      }
+    renderChunk: {
+      async handler(code) {
+        try {
+          const result = await opt.optimizeChunk(code);
+          const map = result.map;
+          code = result.code;
+          return map ? { code, map } : { code };
+        } catch (err) {
+          this.error(`Unable to optimize chunk file: ${err}`);
+        }
+      },
     },
 
     async writeBundle() {
@@ -104,12 +98,12 @@ export function oveo(options: PluginOptions = {}): Plugin & { apply?: "build"; }
         ) {
           propertyMapData = newData;
           try {
-            await fs.writeFile(propertyMap, newData);
+            await this.fs.writeFile(propertyMap, newData);
           } catch (err) {
             this.warn(`Unable to update property map file '${propertyMap}': ${err}`);
           }
         }
       }
-    }
+    },
   };
 };

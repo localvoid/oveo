@@ -15,6 +15,7 @@ tsc *FLAGS:
   tsc -b {{FLAGS}}
 
 publish *NPM_FLAGS:
+  just _pkg-publish ./packages/@oveo/rolldown/ {{NPM_FLAGS}}
   just _pkg-publish ./packages/@oveo/rollup/ {{NPM_FLAGS}}
   just _pkg-publish ./packages/@oveo/vite/ {{NPM_FLAGS}}
   just _pkg-publish ./packages/oveo/ {{NPM_FLAGS}}

@@ -5,7 +5,7 @@ export declare class Optimizer {
   importExterns(data: Uint8Array): void
   importPropertyMap(data: Uint8Array): void
   exportPropertyMap(): Uint8Array
-  optimizeModule(sourceText: string): Promise<OptimizerOutput>
+  optimizeModule(sourceText: string, moduleType: string): Promise<OptimizerOutput>
   optimizeChunk(sourceText: string): Promise<OptimizerOutput>
 }
 
