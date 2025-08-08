@@ -178,6 +178,7 @@ Hoisting heuristics are quite conservative:
   - `NewExpression` - `new C()`
   - `ObjectExpression` - `{ key: value }`
   - `ArrayExpression` - `[a, b, c]`
+  - `TemplateLiteral` - `` `text ${sym}` ``
   - `TaggedTemplateExpression` - ``tpl`text ${sym}` ``
 - No conditionals on the path to the Hoist Scope:
   - `ConditionalExpression` - `cond ? then : else`
