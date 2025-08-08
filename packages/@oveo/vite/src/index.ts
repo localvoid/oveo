@@ -95,7 +95,7 @@ export function oveo(options: PluginOptions = {}): Plugin & { apply?: "build"; }
         const newData = opt.updatePropertyMap();
         if (newData) {
           try {
-            await this.fs.writeFile(propertyMap, newData);
+            await fs.writeFile(propertyMap, newData);
           } catch (err) {
             this.warn(`Unable to update property map file '${propertyMap}': ${err}`);
           }
