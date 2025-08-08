@@ -24,7 +24,6 @@ pub struct OptimizerOptions {
     pub hoist: bool,
     pub dedupe: bool,
     pub globals: GlobalsOptions,
-    pub externs: ExternsOptions,
     pub rename_properties: bool,
 }
 
@@ -33,11 +32,6 @@ pub struct GlobalsOptions {
     pub include: GlobalCategory,
     pub hoist: bool,
     pub singletons: bool,
-}
-
-#[derive(Default, Debug)]
-pub struct ExternsOptions {
-    pub inline_const_values: bool,
 }
 
 pub struct OptimizerOutput {

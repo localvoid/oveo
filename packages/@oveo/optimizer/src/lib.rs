@@ -89,12 +89,6 @@ impl Optimizer {
                             singletons: v.singletons.unwrap_or_default(),
                         })
                         .unwrap_or_default(),
-                    externs: options
-                        .externs
-                        .map(|v| oveo::ExternsOptions {
-                            inline_const_values: v.inline_const_values.unwrap_or_default(),
-                        })
-                        .unwrap_or_default(),
                     rename_properties,
                 },
                 pattern,

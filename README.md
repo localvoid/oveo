@@ -28,7 +28,6 @@ export default defineConfig({
       },
       externs: {
         import: [/* */],
-        inlineConstValues: true,
       },
       renameProperties: {
         pattern: "^[^_].+[^_]_$",
@@ -45,7 +44,6 @@ export default defineConfig({
 - [Expression Deduplication](#expression-deduplication)
 - [Hoisting Globals](#hoisting-globals)
 - [Singletons](#singletons)
-- [Inline Extern Values](#inline-extern-values)
 - [Rename Properties](#rename-properties)
 
 ### Expression Hoisting
@@ -293,61 +291,6 @@ This optimization works during chunk rendering phase and deduplicates objects li
 
 Currently, there are only two singleton objects: `new TextEncoder()` and `new TextDecoder()`.
 
-### Inline Extern Values
-
-This optimization works during module transformation phase and inlines constant values declared in the [externs](#externs) file.
-
-Inlining const values is useful in scenarios when shared constant values imported from different modules negatively affect a chunking algorithm, or when a program does a lot of string comparisons (class names in UI frameworks) and it would be more efficient to keep strings as [interned strings](https://en.wikipedia.org/wiki/String_interning).
-
-```json
-{
-  "@scope/modulename": {
-    "export": {
-      "Button": {
-        "type": "const",
-        "value": "Button"
-      },
-      "ButtonPressed": {
-        "type": "const",
-        "value": "Button-pressed"
-      },
-      "any": {
-        "type": "const",
-        "value": {
-          "key": "May contain any JSON values"
-        }
-      }
-    }
-  },
-}
-```
-
-```jsx
-import { Button, ButtonPressed, any } from "@scope/modulename";
-
-function Button({ pressed }) {
-  const cn = pressed
-    ? `${Button} ${ButtonPressed}`
-    : `${Button}`;
-  return <button class={cn} />
-}
-console.log(any);
-```
-
-Will be transformed into:
-
-```jsx
-function Button({ pressed }) {
-  const cn = pressed
-    ? `${"Button"} ${"Button-pressed"}`
-    : `${"Button"}`;
-  return <button class={cn} />
-}
-console.log({ "key": "May contain any JSON values" });
-```
-
-And after minification (constant evaluation), class names will have an [interned](https://en.wikipedia.org/wiki/String_interning) type.
-
 ### Rename Properties
 
 This optimization works during chunk transformation phase and renames property names that match a regexp pattern or properties from a property map.
@@ -439,10 +382,6 @@ Extern file example:
 {
   "@scope/modulename": {
     "exports": {
-      "constValue": {
-        "type": "const",
-        "value": { "key": "any JSON value" }
-      },
       "fnWithHoistableArg": {
         "type": "function",
         "arguments": [{ "hoist": true }]
@@ -450,12 +389,6 @@ Extern file example:
       "fnWithHoistScopeArg": {
         "type": "function",
         "arguments": [{ "scope": true }]
-      },
-      "customNamespace": {
-        "type": "namespace",
-        "exports": {
-          "any": { "type": "const", "value": 123 }
-        }
       }
     }
   }

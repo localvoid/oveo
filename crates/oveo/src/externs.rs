@@ -64,7 +64,6 @@ fn add_intrinsic(
 pub enum ExternValue {
     Namespace(Arc<ExternModule>),
     Function(Arc<ExternFunction>),
-    Const(Arc<ExternConst>),
 }
 
 #[derive(Deserialize)]

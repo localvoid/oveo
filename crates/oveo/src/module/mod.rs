@@ -16,14 +16,12 @@ use crate::{
             HoistArgument, HoistExpr, HoistScope, HoistStackEntry, HoistStackEntryKind,
             reduce_hoistable_scope,
         },
-        json::json_into_expr,
     },
     statements::Statements,
 };
 
 mod externs;
 mod hoist;
-mod json;
 
 pub fn optimize_module<'a>(
     program: &mut Program<'a>,
@@ -178,14 +176,6 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
 
     fn enter_expression(&mut self, node: &mut Expression<'a>, ctx: &mut TraverseCtx<'a>) {
         match node {
-            Expression::Identifier(_) | Expression::StaticMemberExpression(_) => {
-                if self.options.externs.inline_const_values {
-                    // Inline extern consts
-                    if let Some(ExternValue::Const(v)) = self.externs.resolve(node, ctx) {
-                        *node = json_into_expr(&v.value, &mut ctx.ast);
-                    }
-                }
-            }
             Expression::CallExpression(call_expr) => {
                 if self.options.hoist {
                     // Hoist expressions
