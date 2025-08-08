@@ -559,7 +559,7 @@ fn walk_private_identifier<'a>(
     Some(())
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Clone, Copy)]
 #[repr(u8)]
 enum Tag {

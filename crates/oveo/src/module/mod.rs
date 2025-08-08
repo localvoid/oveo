@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use oxc_allocator::{Address, Allocator, GetAddress, TakeIn, Vec as ArenaVec};
 use oxc_ast::{AstBuilder, NONE, ast::*};
 use oxc_semantic::{Scoping, SymbolFlags};
@@ -452,8 +454,10 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                     }
                     // import * as local from "source"
                     ImportDeclarationSpecifier::ImportNamespaceSpecifier(spec) => {
-                        self.externs
-                            .insert(spec.local.symbol_id(), ExternValue::Namespace(module.clone()));
+                        self.externs.insert(
+                            spec.local.symbol_id(),
+                            ExternValue::Namespace(Arc::clone(&module)),
+                        );
                     }
                 }
             }

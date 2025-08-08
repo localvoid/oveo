@@ -57,7 +57,7 @@ impl PropertyMap {
                         )));
                     };
                     let v: Arc<str> = value.into();
-                    self.index.insert(key.into(), v.clone());
+                    self.index.insert(key.into(), Arc::clone(&v));
                     used.insert(v);
                 }
             }
@@ -112,7 +112,7 @@ impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
                                 let i = self.map.next_id.fetch_add(1, atomic::Ordering::SeqCst);
                                 let s = base54(i);
                                 let uid: Arc<str> = Arc::from(s.as_str());
-                                if used.insert(uid.clone()) {
+                                if used.insert(Arc::clone(&uid)) {
                                     index_entry.insert(uid);
                                     break ast.atom(&s);
                                 }

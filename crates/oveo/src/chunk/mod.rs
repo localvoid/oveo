@@ -204,10 +204,8 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                                             .singletons
                                             .entry(global as *const _)
                                             .or_insert_with(|| {
-                                                let callee_id = self
-                                                    .globals_ids
-                                                    .get(&(global as *const _))
-                                                    .unwrap();
+                                                let callee_id =
+                                                    &self.globals_ids[&(global as *const _)];
                                                 let uid = ctx.generate_uid_in_root_scope(
                                                     "_SINGLETON_",
                                                     SymbolFlags::ConstVariable,

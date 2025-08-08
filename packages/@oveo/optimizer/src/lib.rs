@@ -136,7 +136,7 @@ impl Optimizer {
         module_type: String,
     ) -> AsyncTask<OptimizeModuleTask> {
         AsyncTask::new(OptimizeModuleTask {
-            optimizer: self.inner.clone(),
+            optimizer: Arc::clone(&self.inner),
             source_text,
             module_type,
         })
@@ -144,7 +144,7 @@ impl Optimizer {
 
     #[napi(ts_return_type = "Promise<OptimizerOutput>")]
     pub fn optimize_chunk(&self, source_text: String) -> AsyncTask<OptimizeChunkTask> {
-        AsyncTask::new(OptimizeChunkTask { optimizer: self.inner.clone(), source_text })
+        AsyncTask::new(OptimizeChunkTask { optimizer: Arc::clone(&self.inner), source_text })
     }
 }
 
