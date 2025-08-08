@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use oxc_allocator::Allocator;
-use oxc_codegen::{Codegen, CodegenOptions, CommentOptions};
+use oxc_codegen::{Codegen, CodegenOptions};
 use oxc_parser::Parser;
 use oxc_semantic::SemanticBuilder;
 use oxc_span::SourceType;
@@ -63,7 +63,7 @@ pub fn optimize_module(
     externs: &ExternMap,
 ) -> Result<OptimizerOutput, OptimizerError> {
     let allocator = Allocator::default();
-    let source_type = SourceType::mjs();
+    let source_type = SourceType::tsx();
     let ret = Parser::new(&allocator, source_text, source_type).parse();
     if let Some(err) = ret.errors.first() {
         return Err(OptimizerError::SyntaxError(err.to_string()));
@@ -98,7 +98,7 @@ pub fn optimize_chunk(
     property_map: &PropertyMap,
 ) -> Result<OptimizerOutput, OptimizerError> {
     let allocator = Allocator::default();
-    let source_type = SourceType::mjs();
+    let source_type = SourceType::tsx();
     let ret = Parser::new(&allocator, source_text, source_type).parse();
     if let Some(err) = ret.errors.first() {
         return Err(OptimizerError::SyntaxError(err.to_string()));
