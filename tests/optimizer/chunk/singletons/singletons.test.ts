@@ -14,8 +14,8 @@ for (const entry of entries) {
 
     test(`chunk/singletons/${entry}`, async () => {
       const output = Bun.file(path.join(units, entry, "output.js"));
-      const moduleResult = await optimizer.optimizeModule(input, "js");
-      const chunkResult = await optimizer.optimizeChunk(moduleResult.code);
+      const moduleResult = await optimizer.transform(input, "js");
+      const chunkResult = await optimizer.renderChunk(moduleResult.code);
       expect(normalizeNewlines(chunkResult.code)).toBe(normalizeNewlines(await output.text()));
     });
   } catch (err) { }
