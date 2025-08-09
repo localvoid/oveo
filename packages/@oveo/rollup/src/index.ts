@@ -63,7 +63,7 @@ export function oveo(options: PluginOptions = {}): Plugin {
     async transform(code, id) {
       if (filter(id)) {
         try {
-          const result = await opt.optimizeModule(code, "tsx");
+          const result = await opt.transform(code, "tsx");
           const map = result.map;
           code = result.code;
           return map ? { code, map } : { code };
@@ -75,7 +75,7 @@ export function oveo(options: PluginOptions = {}): Plugin {
 
     async renderChunk(code) {
       try {
-        const result = await opt.optimizeChunk(code);
+        const result = await opt.renderChunk(code);
         const map = result.map;
         code = result.code;
         return map ? { code, map } : { code };

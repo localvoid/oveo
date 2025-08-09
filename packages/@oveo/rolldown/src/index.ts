@@ -59,7 +59,7 @@ export function oveo(options: PluginOptions = {}): RolldownPlugin {
       },
       async handler(code, id, { moduleType }) {
         try {
-          const result = await opt.optimizeModule(code, moduleType);
+          const result = await opt.transform(code, moduleType);
           const map = result.map;
           code = result.code;
           return map ? { code, map } : { code };
@@ -72,7 +72,7 @@ export function oveo(options: PluginOptions = {}): RolldownPlugin {
     renderChunk: {
       async handler(code) {
         try {
-          const result = await opt.optimizeChunk(code);
+          const result = await opt.renderChunk(code);
           const map = result.map;
           code = result.code;
           return map ? { code, map } : { code };

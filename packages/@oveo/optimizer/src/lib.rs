@@ -130,12 +130,12 @@ impl Optimizer {
     }
 
     #[napi(ts_return_type = "Promise<OptimizerOutput>")]
-    pub fn optimize_module(
+    pub fn transform(
         &self,
         source_text: String,
         module_type: String,
-    ) -> AsyncTask<OptimizeModuleTask> {
-        AsyncTask::new(OptimizeModuleTask {
+    ) -> AsyncTask<TransformModuleTask> {
+        AsyncTask::new(TransformModuleTask {
             optimizer: Arc::clone(&self.inner),
             source_text,
             module_type,
@@ -143,18 +143,18 @@ impl Optimizer {
     }
 
     #[napi(ts_return_type = "Promise<OptimizerOutput>")]
-    pub fn optimize_chunk(&self, source_text: String) -> AsyncTask<OptimizeChunkTask> {
-        AsyncTask::new(OptimizeChunkTask { optimizer: Arc::clone(&self.inner), source_text })
+    pub fn render_chunk(&self, source_text: String) -> AsyncTask<RenderChunkTask> {
+        AsyncTask::new(RenderChunkTask { optimizer: Arc::clone(&self.inner), source_text })
     }
 }
 
-pub struct OptimizeModuleTask {
+pub struct TransformModuleTask {
     optimizer: Arc<OptimizerState>,
     source_text: String,
     module_type: String,
 }
 
-impl Task for OptimizeModuleTask {
+impl Task for TransformModuleTask {
     type Output = OptimizerOutput;
     type JsValue = OptimizerOutput;
 
@@ -170,12 +170,12 @@ impl Task for OptimizeModuleTask {
     }
 }
 
-pub struct OptimizeChunkTask {
+pub struct RenderChunkTask {
     optimizer: Arc<OptimizerState>,
     source_text: String,
 }
 
-impl Task for OptimizeChunkTask {
+impl Task for RenderChunkTask {
     type Output = OptimizerOutput;
     type JsValue = OptimizerOutput;
 
