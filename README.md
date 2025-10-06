@@ -33,6 +33,9 @@ export default defineConfig({
         pattern: "^[^_].+[^_]_$",
         map: "property-map",
       },
+      url: {
+        baseURL: "/assets/",
+      },
     }),
   ]
 });
@@ -47,6 +50,7 @@ export default defineConfig({
 - [Hoisting Globals](#hoisting-globals)
 - [Singletons](#singletons)
 - [Rename Properties](#rename-properties)
+- [Absolute URLs](#absolute-urls)
 
 ### Expression Hoisting
 
@@ -333,6 +337,30 @@ Some minifiers support a similar optimization:
 
 - [Terser - Mangle Properties Options](https://terser.org/docs/options/#mangle-properties-options)
 - [esbuild - Mangle props](https://esbuild.github.io/api/#mangle-props)
+
+### Absolute URLs
+
+By default, when Rollup and Rolldown generates URLs to different assets, it generates relative URLs like this `new URL("./asset", import.meta.url).href`.
+
+This optimization rewrites relative URLs into an absolute URL, e.g.:
+
+```js
+function test() {
+  return new URL("./relative.css", import.meta.url).href;
+}
+```
+
+Will be transformed into:
+
+```js
+function test() {
+  return "/base-url/relative.css";
+}
+```
+
+- Rollup supports [`resolveFileUrl`](https://rollupjs.org/plugin-development/#resolvefileurl) hook that can be used instead of this optimization.
+- Rolldown currently doesn't support `resolveFileUrl` hook: [issue#1010](https://github.com/rolldown/rolldown/issues/1010).
+
 
 ## Intrinsic Functions
 

@@ -30,8 +30,13 @@ export interface OptimizerOptions {
   globals?: GlobalsOptions
   externs?: ExternsOptions
   renameProperties?: RenamePropertiesOptions
+  url?: URLOptions
 }
 
 export interface RenamePropertiesOptions {
   pattern?: string
+}
+
+export interface UrlOptions {
+  baseURL: string
 }

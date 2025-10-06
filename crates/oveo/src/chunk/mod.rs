@@ -85,6 +85,34 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
     }
 
     fn enter_expression(&mut self, node: &mut Expression<'a>, ctx: &mut TraverseCtx<'a>) {
+        // Replaces `new URL("./url", import.meta.url).href` with an absolute URL.
+        if let Some(base_url) = &self.options.url {
+            if let Expression::StaticMemberExpression(expr) = node {
+                if expr.property.name == "href" {
+                    if let Expression::NewExpression(new_expr) = &mut expr.object {
+                        let args = &mut new_expr.arguments;
+                        if args.len() == 2 {
+                            let arg0 = &args[0];
+                            let arg1 = &args[1];
+                            if let Argument::StringLiteral(rel_url) = arg0
+                                && is_import_meta_url(arg1)
+                            {
+                                let rel_url = rel_url.value.as_str();
+                                *node = ctx.ast.expression_string_literal(
+                                    SPAN,
+                                    ctx.ast.atom_from_strs_array([
+                                        base_url,
+                                        rel_url.strip_prefix("./").unwrap_or(rel_url),
+                                    ]),
+                                    None,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if self.options.dedupe || self.options.rename_properties {
             // Unwraps `__oveo__()` expressions and adds annotation to the stack.
             let address = node.address();
@@ -143,9 +171,9 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                             }
                         }
                     }
-                    // Replaces global.property with a reference to a const symbol.
                     Expression::StaticMemberExpression(expr) => {
                         if let Expression::Identifier(object_id_expr) = &expr.object {
+                            // Replaces global.property with a reference to a const symbol.
                             if let Some(object_symbol_id) = ctx
                                 .scoping()
                                 .get_reference(object_id_expr.reference_id())
@@ -398,4 +426,18 @@ fn create_new_expr<'a>(
         )),
         ctx,
     )
+}
+
+fn is_import_meta_url<'a>(expr: &Argument<'a>) -> bool {
+    if let Argument::StaticMemberExpression(url) = expr
+        && url.property.name == "url"
+    {
+        if let Expression::MetaProperty(meta) = &url.object
+            && meta.meta.name == "import"
+            && meta.property.name == "meta"
+        {
+            return true;
+        }
+    }
+    false
 }

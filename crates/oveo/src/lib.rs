@@ -25,6 +25,7 @@ pub struct OptimizerOptions {
     pub dedupe: bool,
     pub globals: GlobalsOptions,
     pub rename_properties: bool,
+    pub url: Option<String>,
 }
 
 #[derive(Default, Debug)]

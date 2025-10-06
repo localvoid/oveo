@@ -30,6 +30,7 @@ pub struct OptimizerOptions {
     pub globals: Option<GlobalsOptions>,
     pub externs: Option<ExternsOptions>,
     pub rename_properties: Option<RenamePropertiesOptions>,
+    pub url: Option<URLOptions>,
 }
 
 #[napi(object)]
@@ -47,6 +48,12 @@ pub struct ExternsOptions {
 #[napi(object)]
 pub struct RenamePropertiesOptions {
     pub pattern: Option<String>,
+}
+
+#[napi(object)]
+pub struct URLOptions {
+    #[napi(js_name = "baseURL")]
+    pub base_url: String,
 }
 
 #[napi]
@@ -90,6 +97,7 @@ impl Optimizer {
                         })
                         .unwrap_or_default(),
                     rename_properties,
+                    url: options.url.map(|o| o.base_url),
                 },
                 pattern,
             )
