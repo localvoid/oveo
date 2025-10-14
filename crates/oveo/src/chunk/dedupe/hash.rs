@@ -2,7 +2,6 @@
 //!
 use oxc_allocator::{Address, GetAddress};
 use oxc_ast::ast::*;
-use oxc_index::Idx;
 use oxc_semantic::Scoping;
 use sha1::{Digest, Sha1, Sha1Core, digest::core_api::CoreWrapper};
 
