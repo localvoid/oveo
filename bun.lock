@@ -14,7 +14,7 @@
     },
     "packages/@oveo/optimizer": {
       "name": "@oveo/optimizer",
-      "version": "0.2.1",
+      "version": "0.3.5",
       "optionalDependencies": {
         "@oveo/optimizer-darwin-arm64": "workspace:*",
         "@oveo/optimizer-darwin-x64": "workspace:*",
@@ -26,31 +26,31 @@
     },
     "packages/@oveo/optimizer/packages/darwin-arm64": {
       "name": "@oveo/optimizer-darwin-arm64",
-      "version": "0.2.1",
+      "version": "0.3.5",
     },
     "packages/@oveo/optimizer/packages/darwin-x64": {
       "name": "@oveo/optimizer-darwin-x64",
-      "version": "0.2.1",
+      "version": "0.3.5",
     },
     "packages/@oveo/optimizer/packages/linux-arm64-gnu": {
       "name": "@oveo/optimizer-linux-arm64-gnu",
-      "version": "0.2.1",
+      "version": "0.3.5",
     },
     "packages/@oveo/optimizer/packages/linux-x64-gnu": {
       "name": "@oveo/optimizer-linux-x64-gnu",
-      "version": "0.2.1",
+      "version": "0.3.5",
     },
     "packages/@oveo/optimizer/packages/win32-arm64-msvc": {
       "name": "@oveo/optimizer-win32-arm64-msvc",
-      "version": "0.2.1",
+      "version": "0.3.5",
     },
     "packages/@oveo/optimizer/packages/win32-x64-msvc": {
       "name": "@oveo/optimizer-win32-x64-msvc",
-      "version": "0.2.1",
+      "version": "0.3.5",
     },
     "packages/@oveo/rolldown": {
       "name": "@oveo/rolldown",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "dependencies": {
         "@oveo/optimizer": "workspace:*",
       },
@@ -60,7 +60,7 @@
     },
     "packages/@oveo/rollup": {
       "name": "@oveo/rollup",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "dependencies": {
         "@oveo/optimizer": "workspace:*",
         "@rollup/pluginutils": "^5.2.0",
@@ -71,7 +71,7 @@
     },
     "packages/@oveo/vite": {
       "name": "@oveo/vite",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "dependencies": {
         "@oveo/optimizer": "workspace:*",
         "@rollup/pluginutils": "^5.2.0",
@@ -82,7 +82,13 @@
     },
     "packages/oveo": {
       "name": "oveo",
-      "version": "0.2.1",
+      "version": "0.3.0",
+    },
+    "tests": {
+      "name": "tests",
+      "dependencies": {
+        "@oveo/optimizer": "workspace:^",
+      },
     },
   },
   "packages": {
@@ -457,6 +463,8 @@
     "strip-ansi": ["strip-ansi@6.0.1", "", { "dependencies": { "ansi-regex": "^5.0.1" } }, "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A=="],
 
     "supports-preserve-symlinks-flag": ["supports-preserve-symlinks-flag@1.0.0", "", {}, "sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w=="],
+
+    "tests": ["tests@workspace:tests"],
 
     "tmp": ["tmp@0.0.33", "", { "dependencies": { "os-tmpdir": "~1.0.2" } }, "sha512-jRCJlojKnZ3addtTOjdIqoRuPEKBvNXcGYqzO6zWZX8KfKEpnGY5jfggJQ3EjKuu8D4bJRr0y+cYJFmYbImXGw=="],
 

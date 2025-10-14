@@ -2,7 +2,8 @@
   "workspaces": [
     "packages/@oveo/*",
     "packages/@oveo/optimizer/packages/*",
-    "packages/oveo"
+    "packages/oveo",
+    "tests"
   ],
   "devDependencies": {
     "@types/node": "^24.1.0",
