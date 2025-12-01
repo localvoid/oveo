@@ -1,6 +1,6 @@
 {
   "name": "@oveo/optimizer-darwin-x64",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "cpu": [
     "x64"
   ],
