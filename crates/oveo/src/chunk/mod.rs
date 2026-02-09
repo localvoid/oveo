@@ -205,7 +205,7 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                                                     create_static_member_decl(
                                                         &uid,
                                                         &object_id,
-                                                        expr.property.name,
+                                                        expr.property.name.into(),
                                                         ctx,
                                                     ),
                                                 );
@@ -290,8 +290,8 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
 
     fn exit_identifier_name(&mut self, node: &mut IdentifierName<'a>, ctx: &mut TraverseCtx<'a>) {
         if self.options.rename_properties {
-            if let Some(v) = self.property_map.get(node.name, &ctx.ast) {
-                node.name = v;
+            if let Some(v) = self.property_map.get(node.name.into(), &ctx.ast) {
+                node.name = v.into();
             }
         }
     }
@@ -376,13 +376,8 @@ fn stmt_const_decl<'a>(
         ctx.ast.vec1(ctx.ast.variable_declarator(
             SPAN,
             VariableDeclarationKind::Const,
-            ctx.ast.binding_pattern(
-                BindingPatternKind::BindingIdentifier(
-                    ctx.alloc(uid.create_binding_identifier(ctx)),
-                ),
-                NONE,
-                false,
-            ),
+            ctx.ast.binding_pattern_binding_identifier(SPAN, uid.name),
+            NONE,
             Some(expr),
             false,
         )),

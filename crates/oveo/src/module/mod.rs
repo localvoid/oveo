@@ -379,13 +379,8 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                     ctx.ast.vec1(ctx.ast.variable_declarator(
                         SPAN,
                         VariableDeclarationKind::Const,
-                        ctx.ast.binding_pattern(
-                            BindingPatternKind::BindingIdentifier(
-                                ctx.alloc(uid.create_binding_identifier(ctx)),
-                            ),
-                            NONE,
-                            false,
-                        ),
+                        ctx.ast.binding_pattern_binding_identifier(SPAN, uid.name),
+                        NONE,
                         Some(expr.take_in(ctx.ast.allocator)),
                         false,
                     )),
