@@ -1,6 +1,6 @@
 {
   "name": "@oveo/optimizer-linux-x64-gnu",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "cpu": [
     "x64"
   ],
