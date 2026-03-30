@@ -10,12 +10,12 @@
         "@types/node": "^25.5.0",
         "rolldown": "^1.0.0-rc.10",
         "rollup": "^4.59.0",
-        "typescript": "^5.9.3",
+        "typescript": "^6.0.2",
       },
     },
     "packages/@oveo/optimizer": {
       "name": "@oveo/optimizer",
-      "version": "0.3.11",
+      "version": "0.3.12",
       "optionalDependencies": {
         "@oveo/optimizer-darwin-arm64": "workspace:*",
         "@oveo/optimizer-darwin-x64": "workspace:*",
@@ -27,27 +27,27 @@
     },
     "packages/@oveo/optimizer/packages/darwin-arm64": {
       "name": "@oveo/optimizer-darwin-arm64",
-      "version": "0.3.11",
+      "version": "0.3.12",
     },
     "packages/@oveo/optimizer/packages/darwin-x64": {
       "name": "@oveo/optimizer-darwin-x64",
-      "version": "0.3.11",
+      "version": "0.3.12",
     },
     "packages/@oveo/optimizer/packages/linux-arm64-gnu": {
       "name": "@oveo/optimizer-linux-arm64-gnu",
-      "version": "0.3.11",
+      "version": "0.3.12",
     },
     "packages/@oveo/optimizer/packages/linux-x64-gnu": {
       "name": "@oveo/optimizer-linux-x64-gnu",
-      "version": "0.3.11",
+      "version": "0.3.12",
     },
     "packages/@oveo/optimizer/packages/win32-arm64-msvc": {
       "name": "@oveo/optimizer-win32-arm64-msvc",
-      "version": "0.3.11",
+      "version": "0.3.12",
     },
     "packages/@oveo/optimizer/packages/win32-x64-msvc": {
       "name": "@oveo/optimizer-win32-x64-msvc",
-      "version": "0.3.11",
+      "version": "0.3.12",
     },
     "packages/@oveo/rolldown": {
       "name": "@oveo/rolldown",
@@ -461,7 +461,7 @@
 
     "typanion": ["typanion@3.14.0", "", {}, "sha512-ZW/lVMRabETuYCd9O9ZvMhAh8GslSqaUjxmK/JLPCh6l73CvLBiuXswj/+7LdnWOgYsQ130FqLzFz5aGT4I3Ug=="],
 
-    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+    "typescript": ["typescript@6.0.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ=="],
 
     "undici-types": ["undici-types@7.18.2", "", {}, "sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w=="],
 
