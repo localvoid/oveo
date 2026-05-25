@@ -153,7 +153,7 @@ jobs:
         with:
           pattern: NAPI-*
           path: napi-artifacts
-      - run: napi artifacts --npm-dir ./packages/@oveo/optimizer/packages --package-json-path ./packages/@oveo/optimizer/package.json --output-dir ./napi-artifacts
+      - run: ./node_modules/.bin/napi artifacts --npm-dir ./packages/@oveo/optimizer/packages --package-json-path ./packages/@oveo/optimizer/package.json --output-dir ./napi-artifacts
       - name: Publish to NPM
         run: |
           npm config set provenance true
