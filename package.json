@@ -9,7 +9,7 @@
     "build": "tsc -b",
     "test": "bun test ./tests/",
     "xx": "echo",
-    "napi-build": "napi build --platform --esm --manifest-path ./packages/@oveo/optimizer/Cargo.toml --package-json-path ./packages/@oveo/optimizer/package.json --output-dir ./packages/@oveo/optimizer ${NAPI_FLAGS}"
+    "napi-build": "napi build --platform --esm --manifest-path ./packages/@oveo/optimizer/Cargo.toml --package-json-path ./packages/@oveo/optimizer/package.json --output-dir ./packages/@oveo/optimizer"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
