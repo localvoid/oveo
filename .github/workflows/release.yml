@@ -25,7 +25,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - name: Increment versions and push changes
         run: |
-          ./scripts/increment-versions.sh INCREMENT=${{ github.event.inputs.increment }}
+          ./scripts/increment-versions.sh ${{ github.event.inputs.increment }}
           git config --global user.name "GitHub Action"
           git config --global user.email "username@users.noreply.github.com"
           git commit -a -m "publish: optimizer $(jq -r .version ./packages/@oveo/optimizer/package.json)"
