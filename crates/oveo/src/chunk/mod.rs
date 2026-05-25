@@ -100,7 +100,7 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                                 let rel_url = rel_url.value.as_str();
                                 *node = ctx.ast.expression_string_literal(
                                     SPAN,
-                                    ctx.ast.atom_from_strs_array([
+                                    ctx.ast.str_from_strs_array([
                                         base_url,
                                         rel_url.strip_prefix("./").unwrap_or(rel_url),
                                     ]),
@@ -389,7 +389,7 @@ fn stmt_const_decl<'a>(
 fn create_static_member_decl<'a>(
     uid: &BoundIdentifier<'a>,
     object_id: &BoundIdentifier<'a>,
-    property_name: Atom<'a>,
+    property_name: Str<'a>,
     ctx: &mut TraverseCtx<'a>,
 ) -> Statement<'a> {
     stmt_const_decl(

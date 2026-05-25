@@ -11,7 +11,6 @@ description = "Javascript optimizer"
 [dependencies]
 thiserror.workspace = true
 rustc-hash.workspace = true
-compact_str.workspace = true
 regex.workspace = true
 sha1.workspace = true
 dashmap.workspace = true
@@ -26,6 +25,7 @@ oxc_ecmascript.workspace = true
 oxc_parser.workspace = true
 oxc_semantic.workspace = true
 oxc_span.workspace = true
+oxc_str.workspace = true
 oxc_syntax.workspace = true
 oxc_traverse.workspace = true
 

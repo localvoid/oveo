@@ -82,7 +82,7 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for Statements<'a> {
         for stmt in statements.drain(..) {
             match modifications.remove(&stmt.address()) {
                 Some(modifications) => {
-                    new_statements.extend(modifications.insertions.into_iter());
+                    new_statements.extend(modifications.insertions);
                     if !modifications.remove {
                         new_statements.push(stmt);
                     }

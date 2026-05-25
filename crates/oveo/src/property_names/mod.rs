@@ -2,7 +2,7 @@ use std::{collections::hash_map, sync::Mutex};
 
 use dashmap::DashMap;
 use oxc_ast::{AstBuilder, ast::*};
-use oxc_span::CompactStr;
+use oxc_str::CompactStr;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{OptimizerError, property_names::base54::base54};
@@ -95,7 +95,7 @@ impl PropertyMap {
 
 pub struct LocalPropertyMap<'a, 'ctx> {
     map: &'ctx PropertyMap,
-    cache: FxHashMap<Atom<'a>, Option<Atom<'a>>>,
+    cache: FxHashMap<Str<'a>, Option<Str<'a>>>,
 }
 
 impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
@@ -103,12 +103,12 @@ impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
         Self { map, cache: FxHashMap::default() }
     }
 
-    pub fn get(&mut self, key: Atom<'a>, ast: &AstBuilder<'a>) -> Option<Atom<'a>> {
+    pub fn get(&mut self, key: Str<'a>, ast: &AstBuilder<'a>) -> Option<Str<'a>> {
         match self.cache.entry(key) {
             hash_map::Entry::Occupied(cache_entry) => *cache_entry.get(),
             hash_map::Entry::Vacant(cache_entry) => {
                 let uid = match self.map.index.entry(key.as_str().into()) {
-                    dashmap::Entry::Occupied(index_entry) => Some(ast.atom(index_entry.get())),
+                    dashmap::Entry::Occupied(index_entry) => Some(ast.str(index_entry.get())),
                     dashmap::Entry::Vacant(index_entry) => {
                         if !self.map.matches(key.as_str()) {
                             None
@@ -121,7 +121,7 @@ impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
                                 let uid: CompactStr = s.as_str().into();
                                 if used.index.insert(uid.clone()) {
                                     index_entry.insert(uid);
-                                    break ast.atom(&s);
+                                    break ast.str(&s);
                                 }
                             };
                             Some(uid)
