@@ -21,5 +21,6 @@ PKGS=(
 for dir in "${PKGS[@]}"; do
   echo "$(jq --arg v "$NEW_VERSION" '.version = $v' "$PKG_DIR/packages/${dir}/package.json")" > "$PKG_DIR/packages/${dir}/package.json"
 done
+bun update
 
 sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" crates/oveo/Cargo.toml
