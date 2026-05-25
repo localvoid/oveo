@@ -1,17 +1,18 @@
-import type { HookFilter, RolldownPlugin } from "rolldown";
-import { Optimizer, type OptimizerOptions } from "@oveo/optimizer";
+import type { HookFilter, RolldownPlugin } from 'rolldown';
+import { Optimizer, type OptimizerOptions } from '@oveo/optimizer';
 
 export interface PluginOptions extends OptimizerOptions {
-  readonly filter?: HookFilter,
-  readonly externs?: { inlineConstValues?: boolean, import?: string[]; },
-  readonly renameProperties?: { pattern?: string, map?: string; },
+  readonly filter?: HookFilter;
+  readonly externs?: { inlineConstValues?: boolean; import?: string[] };
+  readonly renameProperties?: { pattern?: string; map?: string };
 }
 
-export function oveo(options: PluginOptions = {}): RolldownPlugin {
+export function oveo(options: PluginOptions = {}): RolldownPlugin & { apply?: 'build' } {
   let opt: Optimizer;
   let propertyMapData: Uint8Array | undefined;
   return {
-    name: "oveo:optimizer",
+    name: 'oveo:optimizer',
+    apply: 'build', // Vite build-mode only
 
     async buildStart() {
       opt = new Optimizer(options);
@@ -24,12 +25,12 @@ export function oveo(options: PluginOptions = {}): RolldownPlugin {
           try {
             opt.importPropertyMap(propertyMapData);
           } catch (err) {
-            this.warn(`Invalid property map file '${propertyMap}': ${err}`);
+            this.warn(`Invalid property map file '${propertyMap}': ${String(err)}`);
           }
         } catch (err) {
           // Report warnings only when minified property generation is disabled.
           if (!options.renameProperties.pattern) {
-            this.warn(`Unable to read property map file '${propertyMap}': ${err}`);
+            this.warn(`Unable to read property map file '${propertyMap}': ${String(err)}`);
           }
         }
       }
@@ -44,7 +45,7 @@ export function oveo(options: PluginOptions = {}): RolldownPlugin {
               const data = await this.fs.readFile(resolved.id);
               opt.importExterns(data);
             } catch (err) {
-              this.warn(`Unable to import extern file '${extern}': ${err}`);
+              this.warn(`Unable to import extern file '${extern}': ${String(err)}`);
             }
           } else {
             this.warn(`Unable to find extern file '${extern}'`);
@@ -55,7 +56,7 @@ export function oveo(options: PluginOptions = {}): RolldownPlugin {
 
     transform: {
       filter: options.filter ?? {
-        moduleType: ["js", "jsx", "ts", "tsx"],
+        moduleType: ['js', 'jsx', 'ts', 'tsx'],
       },
       async handler(code, id, { moduleType }) {
         try {
@@ -64,7 +65,7 @@ export function oveo(options: PluginOptions = {}): RolldownPlugin {
           code = result.code;
           return map ? { code, map } : { code };
         } catch (err) {
-          this.error(`Unable to transform module '${id}': ${err}`);
+          this.error(`Unable to transform module '${id}': ${String(err)}`);
         }
       },
     },
@@ -77,7 +78,7 @@ export function oveo(options: PluginOptions = {}): RolldownPlugin {
           code = result.code;
           return map ? { code, map } : { code };
         } catch (err) {
-          this.error(`Unable to optimize chunk file: ${err}`);
+          this.error(`Unable to optimize chunk file: ${String(err)}`);
         }
       },
     },
@@ -91,10 +92,10 @@ export function oveo(options: PluginOptions = {}): RolldownPlugin {
           try {
             await this.fs.writeFile(propertyMap, newData);
           } catch (err) {
-            this.warn(`Unable to update property map file '${propertyMap}': ${err}`);
+            this.warn(`Unable to update property map file '${propertyMap}': ${String(err)}`);
           }
         }
       }
     },
   };
-};
+}
