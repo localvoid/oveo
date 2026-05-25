@@ -159,12 +159,12 @@ jobs:
         run: |
           npm config set provenance true
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/darwin-arm64 --provenance --access public
-          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/darwin-x64 --provenance --access public
-          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/linux-arm64-gnu --provenance --access public
-          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/linux-x64-gnu --provenance --access public
-          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/win32-arm64-msvc --provenance --access public
-          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/win32-x64-msvc --provenance --access public
-          ./scripts/publish-package.sh ./packages/@oveo/optimizer/ --provenance --access public
-          ./scripts/publish-package.sh ./packages/@oveo/rolldown/ --provenance --access public
-          ./scripts/publish-package.sh ./packages/oveo/ --provenance --access public
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/darwin-arm64
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/darwin-x64
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/linux-arm64-gnu
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/linux-x64-gnu
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/win32-arm64-msvc
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/win32-x64-msvc
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/
+          ./scripts/publish-package.sh ./packages/@oveo/rolldown/
+          ./scripts/publish-package.sh ./packages/oveo/
