@@ -16,7 +16,7 @@
     },
     "packages/@oveo/optimizer": {
       "name": "@oveo/optimizer",
-      "version": "0.3.13",
+      "version": "0.4.0",
       "optionalDependencies": {
         "@oveo/optimizer-darwin-arm64": "workspace:*",
         "@oveo/optimizer-darwin-x64": "workspace:*",
@@ -28,36 +28,36 @@
     },
     "packages/@oveo/optimizer/packages/darwin-arm64": {
       "name": "@oveo/optimizer-darwin-arm64",
-      "version": "0.3.13",
+      "version": "0.4.0",
     },
     "packages/@oveo/optimizer/packages/darwin-x64": {
       "name": "@oveo/optimizer-darwin-x64",
-      "version": "0.3.13",
+      "version": "0.4.0",
     },
     "packages/@oveo/optimizer/packages/linux-arm64-gnu": {
       "name": "@oveo/optimizer-linux-arm64-gnu",
-      "version": "0.3.13",
+      "version": "0.4.0",
     },
     "packages/@oveo/optimizer/packages/linux-x64-gnu": {
       "name": "@oveo/optimizer-linux-x64-gnu",
-      "version": "0.3.13",
+      "version": "0.4.0",
     },
     "packages/@oveo/optimizer/packages/win32-arm64-msvc": {
       "name": "@oveo/optimizer-win32-arm64-msvc",
-      "version": "0.3.13",
+      "version": "0.4.0",
     },
     "packages/@oveo/optimizer/packages/win32-x64-msvc": {
       "name": "@oveo/optimizer-win32-x64-msvc",
-      "version": "0.3.13",
+      "version": "0.4.0",
     },
     "packages/@oveo/rolldown": {
       "name": "@oveo/rolldown",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@oveo/optimizer": "workspace:*",
+        "@oveo/optimizer": "workspace:^",
       },
       "optionalDependencies": {
-        "oveo": "workspace:*",
+        "oveo": "workspace:^",
       },
     },
     "packages/oveo": {
