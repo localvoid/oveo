@@ -85,7 +85,10 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: NAPI-${{ matrix.settings.target }}
-          path: ./packages/@oveo/optimizer/oveo-optimizer.*.node
+          path: |
+            ./packages/@oveo/optimizer/index.js
+            ./packages/@oveo/optimizer/index.d.ts
+            ./packages/@oveo/optimizer/oveo-optimizer.*.node
           if-no-files-found: error
   test:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
