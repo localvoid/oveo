@@ -126,29 +126,22 @@ jobs:
           name: NAPI-${{ matrix.settings.target }}
           path: ./packages/@oveo/optimizer/
       - run: bun run test
-  publish:
-    name: Publish
+  publish-npm:
+    name: Publish NPM
     if: ${{ github.event_name != 'pull_request' && (inputs.publish || startsWith(github.event.head_commit.message, 'publish:')) }}
     runs-on: ubuntu-latest
     needs:
       - test
     steps:
       - uses: actions/checkout@v6
-      - uses: rust-lang/crates-io-auth-action@v1
-        id: auth
       - uses: actions/setup-node@v6
         with:
           node-version: 24
       - uses: oven-sh/setup-bun@v2
-      - uses: dtolnay/rust-toolchain@stable
       - uses: actions/cache@v5
         with:
           path: ${{ env.ACTION_CACHE_PATH }}
           key: NAPI-x86_64-unknown-linux-gnu-ubuntu-latest
-      - run: cargo publish
-        continue-on-error: true
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
       - run: bun install
       - uses: actions/download-artifact@v8
         with:
@@ -168,3 +161,22 @@ jobs:
           ./scripts/publish-package.sh ./packages/@oveo/optimizer/
           ./scripts/publish-package.sh ./packages/@oveo/rolldown/
           ./scripts/publish-package.sh ./packages/oveo/
+  publish-cargo:
+    name: Publish Cargo
+    if: ${{ github.event_name != 'pull_request' && (inputs.publish || startsWith(github.event.head_commit.message, 'publish:')) }}
+    runs-on: ubuntu-latest
+    needs:
+      - test
+    steps:
+      - uses: actions/checkout@v6
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v5
+        with:
+          path: ${{ env.ACTION_CACHE_PATH }}
+          key: NAPI-x86_64-unknown-linux-gnu-ubuntu-latest
+      - run: cargo publish
+        continue-on-error: true
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
