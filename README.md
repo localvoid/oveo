@@ -1,4 +1,4 @@
-[oveo](https://github.com/localvoid/oveo) is a javascript optimizer that works as a plugin for [Vite](https://vite.dev/), [Rollup](https://rollupjs.org/) and [Rolldown](https://rolldown.rs/). It is written in Rust and uses [oxc](https://github.com/oxc-project/oxc/) library for parsing and semantic analysis.
+[oveo](https://github.com/localvoid/oveo) is a javascript optimizer that works as a plugin for [Vite](https://vite.dev/) and [Rolldown](https://rolldown.rs/). It is written in Rust and uses [oxc](https://github.com/oxc-project/oxc/) library for parsing and semantic analysis.
 
 > **Use with caution!**
 >
@@ -6,14 +6,14 @@
 
 It is designed for bundlers that support hooks for transformations that work on [individual modules](https://rollupjs.org/plugin-development/#transform) and on [the final chunk or a bundle](https://rollupjs.org/plugin-development/#renderchunk).
 
-## Vite Setup
+## Vite/Rolldown Setup
 
-- Add `@oveo/vite` package as a dev dependency to a project.
-- Add oveo plugin to a Vite config:
+- Add `@oveo/rolldown` package as a dev dependency to a project.
+- Add oveo plugin to the config:
 
 ```js
-import { defineConfig } from "vite";
-import { oveo } from "@oveo/vite";
+import { defineConfig } from 'vite';
+import { oveo } from '@oveo/rolldown';
 
 export default defineConfig({
   plugins: [
@@ -22,26 +22,26 @@ export default defineConfig({
       hoist: true,
       dedupe: true,
       globals: {
-        include: ["js", "web"],
+        include: ['js', 'web'],
         hoist: true,
         singletons: true,
       },
       externs: {
-        import: [/* */],
+        import: [
+          /* */
+        ],
       },
       renameProperties: {
-        pattern: "^[^_].+[^_]_$",
-        map: "property-map",
+        pattern: '^[^_].+[^_]_$',
+        map: 'property-map',
       },
       url: {
-        baseURL: "/assets/",
+        baseURL: '/assets/',
       },
     }),
-  ]
+  ],
 });
 ```
-
-> Vite setup with rolldown integration should use the `@oveo/rolldown` plugin.
 
 ## Optimizations
 
@@ -71,15 +71,15 @@ By default, there is only one scope (program level scope). Scopes can be created
         "arguments": [{}, { "hoist": true }]
       }
     }
-  },
+  }
 }
 ```
 
 In this [externs](#externs) example we are describing a module `@scope/modulename` that has two functions with an additional behavior: `myscope(() => {..})` and `myfunc(any, hoistable_expr)`. The first argument in the `myscope` function will behave as an expression that creates a new hoist scope. The second argument in the `myfunc` function will be hoisted to the outermost valid scope.
 
 ```js
-import { myscope, myfunc } from "@scope/modulename";
-import { x } from "./module.js";
+import { myscope, myfunc } from '@scope/modulename';
+import { x } from './module.js';
 
 const fn = myscope((inner_0) => {
   myfunc(1, (inner_1) => {
@@ -97,8 +97,8 @@ const fn = myscope((inner_0) => {
 Will be transformed into:
 
 ```js
-import { myscope, myfunc } from "@scope/modulename";
-import { x } from "./module.js";
+import { myscope, myfunc } from '@scope/modulename';
+import { x } from './module.js';
 
 const _HOIST_3 = (inner_3) => {
   x(inner_3);
@@ -156,19 +156,24 @@ Terminology:
 - "Outer Scopes" - scopes outside of the closest Hoist Scope.
 
 ```js
-                       // outer scope (hoist scope - root scope)
-{                      // outer scope
-  scope((a) => {       // inner scope (hoist scope)
-    return () => {     // inner scope function
-      if (a) {         // conditional prevents hoisting
-        hoist((i) => { // hoisted expr
-                       // hoisted expr scope
-          i();         // symbol from the hoisted expr scope
-          a();         // symbol from the inner scope
+// outer scope (hoist scope - root scope)
+{
+  // outer scope
+  scope((a) => {
+    // inner scope (hoist scope)
+    return () => {
+      // inner scope function
+      if (a) {
+        // conditional prevents hoisting
+        hoist((i) => {
+          // hoisted expr
+          // hoisted expr scope
+          i(); // symbol from the hoisted expr scope
+          a(); // symbol from the inner scope
         });
       }
     };
-  })
+  });
 }
 ```
 
@@ -193,11 +198,11 @@ Hoisting heuristics are quite conservative:
 To prevent an expression from hoisting, it should be wrapped in `ParenthesizedExpression`, e.g.:
 
 ```js
-import { hoist } from "oveo";
+import { hoist } from 'oveo';
 
 const a = 1;
 function test() {
-  hoist((() => a));
+  hoist(() => a);
 }
 ```
 
@@ -209,8 +214,8 @@ This optimization works during chunk rendering phase and deduplicates expression
 - Deduped expressions doesn't provide referential equality (expressions from different chunks aren't deduplicated).
 
 ```js
-import { dedupe } from "oveo";
-import { externalIdentifier } from "./module.js";
+import { dedupe } from 'oveo';
+import { externalIdentifier } from './module.js';
 
 const obj1 = dedupe({
   global: Number,
@@ -236,7 +241,7 @@ const arr1 = dedupe([1, 2, 3]);
 Will be transformed into:
 
 ```js
-import { externalIdentifier } from "./module.js";
+import { externalIdentifier } from './module.js';
 
 const _DEDUPE_ = [1, 2, 3];
 const obj1 = {
@@ -315,21 +320,21 @@ status_=c
 Path to a property map file is specified in the oveo plugin options:
 
 ```js
-import { oveo } from "@oveo/vite";
+import { oveo } from '@oveo/vite';
 
 export default {
-  input: "src/main.js",
+  input: 'src/main.js',
   output: {
-    file: "bundle.js",
+    file: 'bundle.js',
   },
   plugins: [
     oveo({
       renameProperties: {
-        pattern: "^[^_].+[^_]_$",
-        map: "property-map",
+        pattern: '^[^_].+[^_]_$',
+        map: 'property-map',
       },
     }),
-  ]
+  ],
 };
 ```
 
@@ -346,7 +351,7 @@ This optimization rewrites relative URLs into an absolute URL, e.g.:
 
 ```js
 function test() {
-  return new URL("./relative.css", import.meta.url).href;
+  return new URL('./relative.css', import.meta.url).href;
 }
 ```
 
@@ -354,13 +359,12 @@ Will be transformed into:
 
 ```js
 function test() {
-  return "/base-url/relative.css";
+  return '/base-url/relative.css';
 }
 ```
 
 - Rollup supports [`resolveFileUrl`](https://rollupjs.org/plugin-development/#resolvefileurl) hook that can be used instead of this optimization.
 - Rolldown currently doesn't support `resolveFileUrl` hook: [issue#1010](https://github.com/rolldown/rolldown/issues/1010).
-
 
 ## Intrinsic Functions
 
@@ -387,23 +391,23 @@ Renames string literal as a property name.
 Extern files are specified in the oveo plugin options:
 
 ```js
-import { oveo } from "@oveo/vite";
+import { oveo } from '@oveo/vite';
 
 export default {
-  input: "src/main.js",
+  input: 'src/main.js',
   output: {
-    file: "bundle.js",
+    file: 'bundle.js',
   },
   plugins: [
     oveo({
       externs: {
         import: [
-          "ivi/oveo.json", // Distributed in the 'ivi' package
-          "./my-custom-extern.json",
+          'ivi/oveo.json', // Distributed in the 'ivi' package
+          './my-custom-extern.json',
         ],
       },
     }),
-  ]
+  ],
 };
 ```
 
