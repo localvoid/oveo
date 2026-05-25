@@ -3,25 +3,25 @@
     "rootDir": "${configDir}/src",
     "outDir": "${configDir}/dist",
     "declarationDir": "${configDir}/dist",
-    "composite": true,
-    "incremental": true,
-    "target": "ES2023",
-    "module": "ES2022",
-    "moduleResolution": "Bundler",
-    "allowArbitraryExtensions": true,
-    "resolveJsonModule": true,
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "moduleDetection": "force",
+    "lib": [
+      "ES2024"
+    ],
+    "types": [
+      "node"
+    ],
+    "isolatedDeclarations": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "importHelpers": true,
     "noEmitHelpers": true,
-    "removeComments": false,
-
-    "strict": true,
     "noImplicitOverride": true,
-    "useUnknownInCatchVariables": false,
-    "noUncheckedSideEffectImports": true,
-    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "skipLibCheck": true
   },
   "include": [
     "${configDir}/src/**/*.ts",
