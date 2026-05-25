@@ -11,7 +11,7 @@
         "oxfmt": "0.51.0",
         "oxlint": "1.66.0",
         "oxlint-tsgolint": "0.23.0",
-        "rolldown": "^1.0.1",
+        "rolldown": "^1.0.2",
         "typescript": "^6.0.3",
       },
     },
