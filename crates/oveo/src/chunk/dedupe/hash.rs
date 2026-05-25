@@ -3,7 +3,7 @@
 use oxc_allocator::{Address, GetAddress};
 use oxc_ast::ast::*;
 use oxc_semantic::Scoping;
-use sha1::{Digest, Sha1, Sha1Core, digest::core_api::CoreWrapper};
+use sha1::{Digest, Sha1};
 
 use crate::chunk::dedupe::DedupeState;
 
@@ -18,7 +18,7 @@ pub fn dedupe_hash<'a>(
 
 fn walk_expr<'a>(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &Expression<'a>,
     scoping: &Scoping,
     address: Address,
@@ -84,7 +84,7 @@ fn walk_expr<'a>(
 
 fn walk_call_expression(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &CallExpression,
     scoping: &Scoping,
     address: Address,
@@ -112,7 +112,7 @@ fn walk_call_expression(
 
 fn walk_array_expression<'a>(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &ArrayExpression<'a>,
     scoping: &Scoping,
     address: Address,
@@ -135,7 +135,7 @@ fn walk_array_expression<'a>(
 
 fn walk_array_expression_element<'a>(
     state: &mut DedupeState,
-    w: &mut CoreWrapper<Sha1Core>,
+    w: &mut Sha1,
     node: &ArrayExpressionElement<'a>,
     scoping: &Scoping,
 ) -> Option<()> {
@@ -193,7 +193,7 @@ fn walk_array_expression_element<'a>(
 
 fn walk_object_expression<'a>(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &ObjectExpression<'a>,
     scoping: &Scoping,
     address: Address,
@@ -216,7 +216,7 @@ fn walk_object_expression<'a>(
 
 fn walk_object_property_kind<'a>(
     state: &mut DedupeState,
-    w: &mut CoreWrapper<Sha1Core>,
+    w: &mut Sha1,
     node: &ObjectPropertyKind<'a>,
     scoping: &Scoping,
 ) -> Option<()> {
@@ -228,7 +228,7 @@ fn walk_object_property_kind<'a>(
 
 fn walk_object_property<'a>(
     state: &mut DedupeState,
-    w: &mut CoreWrapper<Sha1Core>,
+    w: &mut Sha1,
     node: &ObjectProperty<'a>,
     scoping: &Scoping,
 ) -> Option<()> {
@@ -241,7 +241,7 @@ fn walk_object_property<'a>(
 
 fn walk_property_key<'a>(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &PropertyKey<'a>,
     scoping: &Scoping,
     address: Address,
@@ -299,7 +299,7 @@ fn walk_property_key<'a>(
 
 fn walk_template_literal<'a>(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &TemplateLiteral<'a>,
     scoping: &Scoping,
     address: Address,
@@ -324,10 +324,7 @@ fn walk_template_literal<'a>(
     Some(())
 }
 
-fn walk_template_element<'a>(
-    w: &mut CoreWrapper<Sha1Core>,
-    node: &TemplateElement<'a>,
-) -> Option<()> {
+fn walk_template_element<'a>(w: &mut Sha1, node: &TemplateElement<'a>) -> Option<()> {
     w.update(Tag::TemplateElement.to_ne_bytes());
     let s = &node.value.raw;
     w.update(s.len().to_ne_bytes());
@@ -337,7 +334,7 @@ fn walk_template_element<'a>(
 
 fn walk_tagged_template_expression<'a>(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &TaggedTemplateExpression<'a>,
     scoping: &Scoping,
     address: Address,
@@ -366,7 +363,7 @@ fn walk_tagged_template_expression<'a>(
 
 fn walk_static_member_expression<'a>(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &StaticMemberExpression<'a>,
     scoping: &Scoping,
     address: Address,
@@ -388,7 +385,7 @@ fn walk_static_member_expression<'a>(
 
 fn walk_parenthesized_expression<'a>(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &ParenthesizedExpression<'a>,
     scoping: &Scoping,
     address: Address,
@@ -396,27 +393,21 @@ fn walk_parenthesized_expression<'a>(
     walk_expr(state, w, &node.expression, scoping, address)
 }
 
-fn walk_boolean_literal(
-    w: Option<&mut CoreWrapper<Sha1Core>>,
-    node: &BooleanLiteral,
-) -> Option<()> {
+fn walk_boolean_literal(w: Option<&mut Sha1>, node: &BooleanLiteral) -> Option<()> {
     if let Some(h) = w {
         h.update((node.value as u8).to_ne_bytes());
     }
     Some(())
 }
 
-fn walk_null_literal(w: Option<&mut CoreWrapper<Sha1Core>>) -> Option<()> {
+fn walk_null_literal(w: Option<&mut Sha1>) -> Option<()> {
     if let Some(w) = w {
         w.update(Tag::NullLiteral.to_ne_bytes());
     }
     Some(())
 }
 
-fn walk_numeric_literal<'a>(
-    w: Option<&mut CoreWrapper<Sha1Core>>,
-    node: &NumericLiteral<'a>,
-) -> Option<()> {
+fn walk_numeric_literal<'a>(w: Option<&mut Sha1>, node: &NumericLiteral<'a>) -> Option<()> {
     if let Some(h) = w {
         h.update(Tag::NumericLiteral.to_ne_bytes());
         h.update(node.value.to_ne_bytes());
@@ -426,7 +417,7 @@ fn walk_numeric_literal<'a>(
 
 fn walk_string_literal<'a>(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &StringLiteral<'a>,
     address: Address,
 ) -> Option<()> {
@@ -454,7 +445,7 @@ fn walk_string_literal<'a>(
 
 fn walk_big_int_literal<'a>(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &BigIntLiteral<'a>,
     address: Address,
 ) -> Option<()> {
@@ -477,7 +468,7 @@ fn walk_big_int_literal<'a>(
 
 fn walk_reg_exp_literal<'a>(
     state: &mut DedupeState,
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &RegExpLiteral<'a>,
     address: Address,
 ) -> Option<()> {
@@ -502,7 +493,7 @@ fn walk_reg_exp_literal<'a>(
 
 fn walk_spread_element<'a>(
     state: &mut DedupeState,
-    w: &mut CoreWrapper<Sha1Core>,
+    w: &mut Sha1,
     node: &SpreadElement<'a>,
     scoping: &Scoping,
 ) -> Option<()> {
@@ -511,13 +502,13 @@ fn walk_spread_element<'a>(
     Some(())
 }
 
-fn walk_elision(w: &mut CoreWrapper<Sha1Core>) -> Option<()> {
+fn walk_elision(w: &mut Sha1) -> Option<()> {
     w.update(Tag::Elision.to_ne_bytes());
     Some(())
 }
 
 fn walk_identifier_reference<'a>(
-    w: Option<&mut CoreWrapper<Sha1Core>>,
+    w: Option<&mut Sha1>,
     node: &IdentifierReference<'a>,
     scoping: &Scoping,
 ) -> Option<()> {
@@ -536,10 +527,7 @@ fn walk_identifier_reference<'a>(
     Some(())
 }
 
-fn walk_identifier_name<'a>(
-    w: Option<&mut CoreWrapper<Sha1Core>>,
-    node: &IdentifierName<'a>,
-) -> Option<()> {
+fn walk_identifier_name<'a>(w: Option<&mut Sha1>, node: &IdentifierName<'a>) -> Option<()> {
     if let Some(h) = w {
         h.update(Tag::IdentifierName.to_ne_bytes());
         h.update(node.name.as_bytes());
@@ -547,10 +535,7 @@ fn walk_identifier_name<'a>(
     Some(())
 }
 
-fn walk_private_identifier<'a>(
-    w: Option<&mut CoreWrapper<Sha1Core>>,
-    node: &PrivateIdentifier<'a>,
-) -> Option<()> {
+fn walk_private_identifier<'a>(w: Option<&mut Sha1>, node: &PrivateIdentifier<'a>) -> Option<()> {
     if let Some(h) = w {
         h.update(Tag::PrivateIdentifier.to_ne_bytes());
         h.update(node.name.as_bytes());
