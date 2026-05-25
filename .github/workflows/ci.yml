@@ -47,22 +47,16 @@ jobs:
         settings:
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            build: NAPI_FLAGS="--release --target x86_64-unknown-linux-gnu --use-napi-cross" bun run napi-build
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            build: NAPI_FLAGS="--release --target aarch64-unknown-linux-gnu --use-napi-cross" bun run napi-build
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: NAPI_FLAGS="--release --target x86_64-apple-darwin" bun run napi-build
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: NAPI_FLAGS="--release --target aarch64-apple-darwin" bun run napi-build
           - host: windows-latest
             target: x86_64-pc-windows-msvc
-            build: NAPI_FLAGS="--release --target x86_64-pc-windows-msvc" bun run napi-build
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: NAPI_FLAGS="--release --target aarch64-pc-windows-msvc" bun run napi-build
     name: stable - ${{ matrix.settings.target }}
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -80,6 +74,9 @@ jobs:
           path: ${{ env.ACTION_CACHE_PATH }}
           key: NAPI-${{ matrix.settings.target }}-${{ matrix.settings.host }}
       - run: bun install
+      - run: bun run napi-build
+        env:
+          NAPI_FLAGS: --release --target ${{ matrix.settings.target }}
       - run: ${{ matrix.settings.build }}
       - uses: actions/upload-artifact@v7
         with:
