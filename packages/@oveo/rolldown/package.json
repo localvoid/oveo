@@ -17,15 +17,14 @@
     "clean": "rm -rf tsconfig.tsbuildinfo ./dist ./node_modules"
   },
   "dependencies": {
-    "@oveo/optimizer": "workspace:*"
+    "@oveo/optimizer": "workspace:^"
   },
   "optionalDependencies": {
-    "oveo": "workspace:*"
+    "oveo": "workspace:^"
   },
   "description": "Rolldown plugin for oveo optimizer",
   "license": "MIT",
   "keywords": [
-    "oveo",
     "rolldown-plugin"
   ],
   "author": "Boris Kaul <localvoid@gmail.com> (https://github.com/localvoid)",

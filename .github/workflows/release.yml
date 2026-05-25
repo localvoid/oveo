@@ -9,10 +9,10 @@ on:
         type: choice
         required: true
         description: Increment version
-        options: 
-        - patch
-        - minor
-        - major
+        options:
+          - patch
+          - minor
+          - major
 jobs:
   publish:
     name: Release new @oveo/optimizer version
@@ -25,8 +25,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - name: Increment versions and push changes
         run: |
-          make napi-increment-versions INCREMENT=${{ github.event.inputs.increment }}
+          ./scripts/increment-versions.sh INCREMENT=${{ github.event.inputs.increment }}
           git config --global user.name "GitHub Action"
           git config --global user.email "username@users.noreply.github.com"
-          git commit -a -m "publish: @oveo/optimizer $(jq -r .version ./packages/@oveo/optimizer/package.json)"
+          git commit -a -m "publish: optimizer $(jq -r .version ./packages/@oveo/optimizer/package.json)"
           git push

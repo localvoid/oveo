@@ -5,6 +5,11 @@
     "packages/oveo",
     "tests"
   ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "bun test ./tests/",
+    "napi-build": "napi build --platform --esm --manifest-path ./packages/@oveo/optimizer/Cargo.toml --package-json-path ./packages/@oveo/optimizer/package.json --output-dir ./packages/@oveo/optimizer ${NAPI_FLAGS}"
+  },
   "devDependencies": {
     "@types/node": "^25.9.1",
     "@types/bun": "^1.3.14",

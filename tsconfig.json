@@ -1,10 +1,14 @@
 {
   "include": [],
   "references": [
-    { "path": "packages/oveo" },
-    { "path": "packages/@oveo/optimizer" },
-    { "path": "packages/@oveo/rolldown" },
-    { "path": "packages/@oveo/rollup" },
-    { "path": "packages/@oveo/vite" },
+    {
+      "path": "packages/oveo"
+    },
+    {
+      "path": "packages/@oveo/optimizer"
+    },
+    {
+      "path": "packages/@oveo/rolldown"
+    },
   ],
 }

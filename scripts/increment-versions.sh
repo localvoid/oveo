@@ -9,9 +9,17 @@ bun pm version "$INCREMENT" --no-git-tag-version
 NEW_VERSION="$(jq -r .version package.json)"
 cd - > /dev/null
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-for dir in darwin-arm64 darwin-x64 linux-arm64-gnu linux-x64-gnu win32-arm64-msvc win32-x64-msvc; do
-  "$SCRIPT_DIR/set-package-version.sh" "$PKG_DIR/packages/$dir" "$NEW_VERSION"
+PKGS=(
+  "darwin-arm64"
+  "darwin-x64"
+  "linux-arm64-gnu"
+  "linux-x64-gnu"
+  "win32-arm64-msvc"
+  "win32-x64-msvc"
+)
+
+for dir in "${PKGS[@]}"; do
+  echo "$(jq --arg v "$NEW_VERSION" '.version = $v' "$PKG_DIR/packages/${dir}/package.json")" > "$PKG_DIR/packages/${dir}/package.json"
 done
 
 sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" crates/oveo/Cargo.toml

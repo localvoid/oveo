@@ -1,6 +1,14 @@
 name: CI
 env:
+  DEBUG: napi:*
+  MACOSX_DEPLOYMENT_TARGET: "10.13"
+  CARGO_INCREMENTAL: "1"
   ACTION_CACHE_PATH: |
+    ~/.cargo/bin/
+    ~/.cargo/registry/index/
+    ~/.cargo/registry/cache/
+    ~/.cargo/git/db/
+    target/
     ~/.bun/install/cache
     node_modules/
 permissions:
@@ -14,44 +22,152 @@ on:
         type: boolean
   push:
     paths:
+      - crates/**
       - packages/**
-      - bun.lock
-      - "!crates/**"
-      - "!packages/@oveo/optimizer/**"
-      - "!tests/optimizer/**"
+      - tests/**
+      - Cargo.lock
     branches:
       - master
   pull_request:
     paths:
+      - crates/**
       - packages/**
-      - bun.lock
-      - "!crates/**"
-      - "!packages/@oveo/optimizer/**"
-      - "!tests/optimizer/**"
+      - tests/**
+      - Cargo.lock
     branches:
       - master
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  publish:
-    name: Publish
-    if: ${{ github.event_name != 'pull_request' && (inputs.publish || startsWith(github.event.head_commit.message, 'publish:')) }}
-    runs-on: ubuntu-latest
+  build-napi:
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            build: NAPI_FLAGS="--release --target x86_64-unknown-linux-gnu --use-napi-cross" bun run napi-build
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            build: NAPI_FLAGS="--release --target aarch64-unknown-linux-gnu --use-napi-cross" bun run napi-build
+          - host: macos-latest
+            target: x86_64-apple-darwin
+            build: NAPI_FLAGS="--release --target x86_64-apple-darwin" bun run napi-build
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            build: NAPI_FLAGS="--release --target aarch64-apple-darwin" bun run napi-build
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            build: NAPI_FLAGS="--release --target x86_64-pc-windows-msvc" bun run napi-build
+          - host: windows-latest
+            target: aarch64-pc-windows-msvc
+            build: NAPI_FLAGS="--release --target aarch64-pc-windows-msvc" bun run napi-build
+    name: stable - ${{ matrix.settings.target }}
+    runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 24
       - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.settings.target }}
       - uses: actions/cache@v5
         with:
           path: ${{ env.ACTION_CACHE_PATH }}
-          key: CI
-      - run: make init
-      - run: make tsc
+          key: NAPI-${{ matrix.settings.target }}-${{ matrix.settings.host }}
+      - run: bun install
+      - run: ${{ matrix.settings.build }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: NAPI-${{ matrix.settings.target }}
+          path: |
+            ./packages/@oveo/optimizer/index.js
+            ./packages/@oveo/optimizer/index.d.ts
+            ./packages/@oveo/optimizer/oveo-optimizer.*.node
+          if-no-files-found: error
+  test:
+    name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
+    needs:
+      - build-napi
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            architecture: x64
+          - host: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            architecture: arm64
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            architecture: x64
+          - host: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            architecture: arm64
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            architecture: arm64
+    runs-on: ${{ matrix.settings.host }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          architecture: ${{ matrix.settings.architecture }}
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v5
+        with:
+          path: ${{ env.ACTION_CACHE_PATH }}
+          key: ${{ matrix.settings.target }}-${{ matrix.settings.host }}
+      - run: bun install
+      - uses: actions/download-artifact@v8
+        with:
+          name: NAPI-${{ matrix.settings.target }}
+          path: ./packages/@oveo/optimizer/
+      - run: bun run test
+  publish:
+    name: Publish
+    if: ${{ github.event_name != 'pull_request' && (inputs.publish || startsWith(github.event.head_commit.message, 'publish:')) }}
+    runs-on: ubuntu-latest
+    needs:
+      - test
+    steps:
+      - uses: actions/checkout@v6
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v5
+        with:
+          path: ${{ env.ACTION_CACHE_PATH }}
+          key: NAPI-x86_64-unknown-linux-gnu-ubuntu-latest
+      - run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+      - run: bun install
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: NAPI-*
+          path: napi-artifacts
+      - run: napi artifacts --npm-dir ./packages/@oveo/optimizer/packages --package-json-path ./packages/@oveo/optimizer/package.json --output-dir ./napi-artifacts
       - name: Publish to NPM
         run: |
           npm config set provenance true
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-          make publish NPM_FLAGS="--provenance --access public"
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/darwin-arm64 --provenance --access public
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/darwin-x64 --provenance --access public
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/linux-arm64-gnu --provenance --access public
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/linux-x64-gnu --provenance --access public
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/win32-arm64-msvc --provenance --access public
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/packages/win32-x64-msvc --provenance --access public
+          ./scripts/publish-package.sh ./packages/@oveo/optimizer/ --provenance --access public
+          ./scripts/publish-package.sh ./packages/@oveo/rolldown/ --provenance --access public
+          ./scripts/publish-package.sh ./packages/oveo/ --provenance --access public
