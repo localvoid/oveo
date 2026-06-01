@@ -3,7 +3,7 @@ import { readdir } from 'node:fs/promises';
 import * as path from 'node:path';
 import { Optimizer } from '@oveo/optimizer';
 
-import { normalizeNewlines } from '../../normalize.ts';
+import { normalizeNewlines } from '../../normalize.js';
 
 const EXTERNS = `{
   "@test/oveo": {
@@ -37,5 +37,5 @@ for (const entry of entries) {
       const result = await optimizer.transform(input, 'js');
       expect(normalizeNewlines(result.code)).toBe(normalizeNewlines(await output.text()));
     });
-  } catch (err) {}
+  } catch {}
 }

@@ -35,5 +35,5 @@ for (const entry of entries) {
         expect(newPropsData).toBe(null);
       }
     });
-  } catch (err) {}
+  } catch {}
 }

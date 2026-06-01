@@ -19,5 +19,5 @@ for (const entry of entries) {
       const chunkResult = await optimizer.renderChunk(moduleResult.code);
       expect(normalizeNewlines(chunkResult.code)).toBe(normalizeNewlines(await output.text()));
     });
-  } catch (err) {}
+  } catch {}
 }

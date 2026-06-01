@@ -18,5 +18,5 @@ for (const entry of entries) {
       const result = await optimizer.transform(input, 'js');
       expect(normalizeNewlines(result.code)).toBe(normalizeNewlines(await output.text()));
     });
-  } catch (err) {}
+  } catch {}
 }

@@ -42,6 +42,7 @@
     "bun.lock",
     "packages/@oveo/*/dist/**",
     "packages/*/dist/**",
+    "examples/**",
     "tests/**/*.js",
     "target/**"
   ]
