@@ -1,10 +1,17 @@
 {
   "name": "oveo",
   "version": "0.4.0",
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./index.js"
+  "description": "oveo intrinsics",
+  "keywords": [
+    "oveo"
+  ],
+  "homepage": "https://github.com/localvoid/oveo",
+  "bugs": "https://github.com/localvoid/oveo/issues",
+  "license": "MIT",
+  "author": "Boris Kaul <localvoid@gmail.com> (https://github.com/localvoid)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/localvoid/oveo.git"
   },
   "files": [
     "index.js",
@@ -12,16 +19,9 @@
     "README.md",
     "LICENSE"
   ],
-  "description": "oveo intrinsics",
-  "license": "MIT",
-  "keywords": [
-    "oveo"
-  ],
-  "author": "Boris Kaul <localvoid@gmail.com> (https://github.com/localvoid)",
-  "homepage": "https://github.com/localvoid/oveo",
-  "bugs": "https://github.com/localvoid/oveo/issues",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/localvoid/oveo.git"
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./index.js"
   }
 }

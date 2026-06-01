@@ -7,12 +7,8 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "moduleDetection": "force",
-    "lib": [
-      "ES2024"
-    ],
-    "types": [
-      "node"
-    ],
+    "lib": ["ES2024"],
+    "types": ["node"],
     "isolatedDeclarations": true,
     "declaration": true,
     "declarationMap": true,
@@ -23,7 +19,5 @@
     "noUnusedLocals": true,
     "skipLibCheck": true
   },
-  "include": [
-    "${configDir}/src/**/*.ts",
-  ]
+  "include": ["${configDir}/src/**/*.ts"]
 }

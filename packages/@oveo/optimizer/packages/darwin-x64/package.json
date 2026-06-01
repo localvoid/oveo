@@ -1,29 +1,29 @@
 {
   "name": "@oveo/optimizer-darwin-x64",
   "version": "0.4.0",
-  "cpu": [
-    "x64"
-  ],
-  "main": "oveo-optimizer.darwin-x64.node",
-  "files": [
-    "oveo-optimizer.darwin-x64.node"
-  ],
   "description": "oveo optimizer NAPI",
   "keywords": [
     "oveo"
   ],
-  "author": "Boris Kaul <localvoid@gmail.com> (https://github.com/localvoid)",
   "homepage": "https://github.com/localvoid/oveo",
+  "bugs": "https://github.com/localvoid/oveo/issues",
   "license": "MIT",
-  "engines": {
-    "node": ">= 20.0.0"
-  },
+  "author": "Boris Kaul <localvoid@gmail.com> (https://github.com/localvoid)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/localvoid/oveo.git"
   },
-  "bugs": "https://github.com/localvoid/oveo/issues",
+  "files": [
+    "oveo-optimizer.darwin-x64.node"
+  ],
   "os": [
     "darwin"
-  ]
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "main": "oveo-optimizer.darwin-x64.node",
+  "engines": {
+    "node": ">= 20.0.0"
+  }
 }

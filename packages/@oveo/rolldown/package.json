@@ -1,10 +1,17 @@
 {
   "name": "@oveo/rolldown",
   "version": "0.4.1",
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./dist/index.js"
+  "description": "Rolldown plugin for oveo optimizer",
+  "keywords": [
+    "rolldown-plugin"
+  ],
+  "homepage": "https://github.com/localvoid/oveo",
+  "bugs": "https://github.com/localvoid/oveo/issues",
+  "license": "MIT",
+  "author": "Boris Kaul <localvoid@gmail.com> (https://github.com/localvoid)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/localvoid/oveo.git"
   },
   "files": [
     "dist",
@@ -13,6 +20,11 @@
     "README.md",
     "LICENSE"
   ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "scripts": {
     "clean": "rm -rf tsconfig.tsbuildinfo ./dist ./node_modules"
   },
@@ -21,17 +33,5 @@
   },
   "optionalDependencies": {
     "oveo": "workspace:^"
-  },
-  "description": "Rolldown plugin for oveo optimizer",
-  "license": "MIT",
-  "keywords": [
-    "rolldown-plugin"
-  ],
-  "author": "Boris Kaul <localvoid@gmail.com> (https://github.com/localvoid)",
-  "homepage": "https://github.com/localvoid/oveo",
-  "bugs": "https://github.com/localvoid/oveo/issues",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/localvoid/oveo.git"
   }
 }

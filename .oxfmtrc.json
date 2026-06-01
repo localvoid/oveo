@@ -19,30 +19,19 @@
       {
         "newlinesBetween": true
       },
-      [
-        "subpath"
-      ],
-      [
-        "type-parent",
-        "type-sibling",
-        "type-index"
-      ],
-      [
-        "value-parent",
-        "value-sibling",
-        "value-index"
-      ],
-      [
-        "style",
-        "side_effect_style"
-      ],
+      ["subpath"],
+      ["type-parent", "type-sibling", "type-index"],
+      ["value-parent", "value-sibling", "value-index"],
+      ["style", "side_effect_style"],
       "unknown"
     ]
   },
   "sortPackageJson": true,
   "ignorePatterns": [
     "bun.lock",
-    "packages/@sysopkit/*/dist/**",
-    "packages/*/dist/**"
+    "packages/@oveo/*/dist/**",
+    "packages/*/dist/**",
+    "tests/**/*.js",
+    "target/**"
   ]
 }

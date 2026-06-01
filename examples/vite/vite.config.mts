@@ -1,5 +1,5 @@
-import { defineConfig } from "vite";
-import { oveo } from "@oveo/vite";
+import { oveo } from '@oveo/vite';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   build: {
@@ -10,17 +10,17 @@ export default defineConfig({
       hoist: true,
       dedupe: true,
       globals: {
-        include: ["js", "web"],
+        include: ['js', 'web'],
         hoist: true,
         singletons: true,
       },
       externs: {
-        import: ["externs.json"],
+        import: ['externs.json'],
         inlineConstValues: true,
       },
       renameProperties: {
-        pattern: "^[^_].+[^_]_$",
-        map: "properties.ini",
+        pattern: '^[^_].+[^_]_$',
+        map: 'properties.ini',
       },
     }),
   ],

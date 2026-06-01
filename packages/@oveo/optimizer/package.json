@@ -1,15 +1,30 @@
 {
   "name": "@oveo/optimizer",
   "version": "0.4.0",
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./index.js"
+  "description": "oveo optimizer NAPI",
+  "keywords": [
+    "oveo"
+  ],
+  "homepage": "https://github.com/localvoid/oveo",
+  "bugs": "https://github.com/localvoid/oveo/issues",
+  "license": "MIT",
+  "author": "Boris Kaul <localvoid@gmail.com> (https://github.com/localvoid)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/localvoid/oveo.git"
   },
   "files": [
     "index.d.ts",
     "index.js"
   ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "clean": "rm -rf oveo-optimizer-*.node"
+  },
   "optionalDependencies": {
     "@oveo/optimizer-darwin-arm64": "workspace:*",
     "@oveo/optimizer-darwin-x64": "workspace:*",
@@ -31,20 +46,5 @@
   },
   "engines": {
     "node": ">= 20.0.0"
-  },
-  "scripts": {
-    "clean": "rm -rf oveo-optimizer-*.node"
-  },
-  "description": "oveo optimizer NAPI",
-  "license": "MIT",
-  "keywords": [
-    "oveo"
-  ],
-  "author": "Boris Kaul <localvoid@gmail.com> (https://github.com/localvoid)",
-  "homepage": "https://github.com/localvoid/oveo",
-  "bugs": "https://github.com/localvoid/oveo/issues",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/localvoid/oveo.git"
   }
 }

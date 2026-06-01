@@ -1,10 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "unicorn",
-    "typescript",
-    "oxc"
-  ],
+  "plugins": ["unicorn", "typescript", "oxc"],
   "options": {
     "typeAware": true,
     "typeCheck": true
@@ -43,7 +39,10 @@
   },
   "globals": {},
   "ignorePatterns": [
-    "packages/@sysopkit/*/dist/**",
-    "packages/*/dist/**"
+    "bun.lock",
+    "packages/@oveo/*/dist/**",
+    "packages/*/dist/**",
+    "tests/**/*.js",
+    "target/**"
   ]
 }

@@ -1,1 +1,1 @@
-export const val = { a: "original" };
+export const val = { a: 'original' };

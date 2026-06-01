@@ -1,18 +1,18 @@
-import nodeResolve from "@rollup/plugin-node-resolve";
-import { oveo } from "@oveo/rollup";
+import { oveo } from '@oveo/rollup';
+import nodeResolve from '@rollup/plugin-node-resolve';
 
 export default {
-  input: "./src/main.js",
+  input: './src/main.js',
   output: {
-    format: "es",
+    format: 'es',
     strict: true,
-    dir: "dist",
-    generatedCode: "es2015",
+    dir: 'dist',
+    generatedCode: 'es2015',
   },
   watch: {
     chokidar: {
       usePolling: true,
-    }
+    },
   },
   plugins: [
     nodeResolve(),
@@ -20,19 +20,17 @@ export default {
       hoist: true,
       dedupe: true,
       globals: {
-        include: ["js", "web"],
+        include: ['js', 'web'],
         hoist: true,
         singletons: true,
       },
       externs: {
         inlineConstValues: true,
-        import: [
-          "./externs.json",
-        ],
+        import: ['./externs.json'],
       },
       renameProperties: {
-        pattern: "^[^_].+[^_]_$",
-        map: "./properties.ini",
+        pattern: '^[^_].+[^_]_$',
+        map: './properties.ini',
       },
     }),
   ],
