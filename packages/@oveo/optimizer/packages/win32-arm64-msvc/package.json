@@ -1,6 +1,6 @@
 {
   "name": "@oveo/optimizer-win32-arm64-msvc",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "oveo optimizer NAPI",
   "keywords": [
     "oveo"
