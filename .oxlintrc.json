@@ -34,16 +34,8 @@
   },
   "env": {
     "builtin": true,
-    "es2024": true,
     "node": true
   },
   "globals": {},
-  "ignorePatterns": [
-    "bun.lock",
-    "packages/@oveo/*/dist/**",
-    "packages/*/dist/**",
-    "examples/**",
-    "tests/**/*.js",
-    "target/**"
-  ]
+  "ignorePatterns": ["**/dist/**", "examples/**", "tests/**/*.js", "target/**"]
 }

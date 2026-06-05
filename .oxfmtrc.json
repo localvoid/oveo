@@ -27,11 +27,5 @@
     ]
   },
   "sortPackageJson": true,
-  "ignorePatterns": [
-    "bun.lock",
-    "packages/@oveo/*/dist/**",
-    "packages/*/dist/**",
-    "tests/**/*.js",
-    "target/**"
-  ]
+  "ignorePatterns": ["**/dist/**", "tests/**/*.js", "target/**"]
 }
