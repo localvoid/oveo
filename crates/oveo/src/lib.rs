@@ -69,14 +69,14 @@ pub fn optimize_module(
         _ => return Err(OptimizerError::ModuleType(module_type.to_string())),
     };
     let ret = Parser::new(&allocator, source_text, source_type).parse();
-    if let Some(err) = ret.errors.first() {
+    if let Some(err) = ret.diagnostics.first() {
         return Err(OptimizerError::SyntaxError(err.to_string()));
     }
 
     let mut program = ret.program;
 
     let ret = SemanticBuilder::new().with_excess_capacity(0.1).build(&program);
-    if let Some(err) = ret.errors.first() {
+    if let Some(err) = ret.diagnostics.first() {
         return Err(OptimizerError::SemanticError(err.to_string()));
     }
 
@@ -104,14 +104,14 @@ pub fn optimize_chunk(
     let allocator = Allocator::default();
     let source_type = SourceType::mjs();
     let ret = Parser::new(&allocator, source_text, source_type).parse();
-    if let Some(err) = ret.errors.first() {
+    if let Some(err) = ret.diagnostics.first() {
         return Err(OptimizerError::SyntaxError(err.to_string()));
     }
 
     let mut program = ret.program;
 
     let ret = SemanticBuilder::new().with_excess_capacity(0.1).build(&program);
-    if let Some(err) = ret.errors.first() {
+    if let Some(err) = ret.diagnostics.first() {
         return Err(OptimizerError::SemanticError(err.to_string()));
     }
 
