@@ -1,6 +1,6 @@
 {
   "name": "@oveo/optimizer-darwin-x64",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "oveo optimizer NAPI",
   "keywords": [
     "oveo"
