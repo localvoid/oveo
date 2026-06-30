@@ -1,6 +1,6 @@
 {
   "name": "@oveo/optimizer-linux-x64-gnu",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "oveo optimizer NAPI",
   "keywords": [
     "oveo"
