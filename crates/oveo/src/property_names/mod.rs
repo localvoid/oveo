@@ -1,6 +1,7 @@
 use std::{collections::hash_map, sync::Mutex};
 
 use dashmap::DashMap;
+use oxc_allocator::FromIn as _;
 use oxc_ast::{AstBuilder, ast::*};
 use oxc_str::CompactStr;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -108,7 +109,9 @@ impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
             hash_map::Entry::Occupied(cache_entry) => *cache_entry.get(),
             hash_map::Entry::Vacant(cache_entry) => {
                 let uid = match self.map.index.entry(key.as_str().into()) {
-                    dashmap::Entry::Occupied(index_entry) => Some(ast.str(index_entry.get())),
+                    dashmap::Entry::Occupied(index_entry) => {
+                        Some(Str::from_in(index_entry.get().as_str(), ast.allocator))
+                    }
                     dashmap::Entry::Vacant(index_entry) => {
                         if !self.map.matches(key.as_str()) {
                             None
@@ -121,7 +124,7 @@ impl<'a, 'ctx> LocalPropertyMap<'a, 'ctx> {
                                 let uid: CompactStr = s.as_str().into();
                                 if used.index.insert(uid.clone()) {
                                     index_entry.insert(uid);
-                                    break ast.str(&s);
+                                    break Str::from_in(s.as_str(), ast.allocator);
                                 }
                             };
                             Some(uid)

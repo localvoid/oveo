@@ -101,7 +101,7 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                 return;
             }
 
-            let mut new_stmts = ctx.ast.vec_with_capacity(new_stmts_len);
+            let mut new_stmts = ArenaVec::with_capacity_in(new_stmts_len, ctx);
 
             for mut s in node.drain(..) {
                 if let Statement::VariableDeclaration(decl) = &mut s
@@ -111,7 +111,14 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                     let kind = decl.kind;
                     let declare = decl.declare;
                     new_stmts.extend(decl.declarations.drain(..).map(|d| {
-                        ctx.ast.declaration_variable(span, kind, ctx.ast.vec1(d), declare).into()
+                        Declaration::VariableDeclaration(VariableDeclaration::boxed(
+                            span,
+                            kind,
+                            ArenaVec::from_value_in(d, ctx),
+                            declare,
+                            ctx,
+                        ))
+                        .into()
                     }));
                 } else {
                     new_stmts.push(s);
@@ -360,11 +367,7 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                     );
                 }
                 if self.options.dedupe {
-                    *expr = annotate(
-                        expr.take_in(ctx.ast.allocator),
-                        Annotation::dedupe(),
-                        &mut ctx.ast,
-                    );
+                    *expr = annotate(expr.take_in(ctx), Annotation::dedupe(), &mut ctx.ast);
                 }
                 let Some(hoist_scope_id) = s.hoist_scope_id else {
                     return;
@@ -373,19 +376,27 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                 let uid = ctx.generate_uid("_HOISTED_", hoist_scope_id, SymbolFlags::ConstVariable);
 
                 // const _HOISTED_ = expr;
-                let hoisted_var_decl = ctx.ast.declaration_variable(
-                    SPAN,
-                    VariableDeclarationKind::Const,
-                    ctx.ast.vec1(ctx.ast.variable_declarator(
+                let hoisted_var_decl =
+                    Declaration::VariableDeclaration(VariableDeclaration::boxed(
                         SPAN,
                         VariableDeclarationKind::Const,
-                        ctx.ast.binding_pattern_binding_identifier(SPAN, uid.name),
-                        NONE,
-                        Some(expr.take_in(ctx.ast.allocator)),
+                        ArenaVec::from_value_in(
+                            VariableDeclarator::new(
+                                SPAN,
+                                VariableDeclarationKind::Const,
+                                BindingPattern::BindingIdentifier(BindingIdentifier::boxed(
+                                    SPAN, uid.name, ctx,
+                                )),
+                                NONE,
+                                Some(expr.take_in(ctx)),
+                                false,
+                                ctx,
+                            ),
+                            ctx,
+                        ),
                         false,
-                    )),
-                    false,
-                );
+                        ctx,
+                    ));
                 *expr = uid.create_read_expression(ctx);
 
                 if let Some(scope) = self.hoist_stack.iter().find(|x| x.scope_id == hoist_scope_id)
@@ -469,24 +480,33 @@ fn annotate<'a>(
     annotation: Annotation,
     ast: &mut AstBuilder<'a>,
 ) -> Expression<'a> {
-    ast.expression_call(
+    Expression::CallExpression(CallExpression::boxed(
         SPAN,
-        ast.expression_identifier(SPAN, Annotation::ID_NAME),
+        Expression::Identifier(IdentifierReference::boxed(SPAN, Annotation::ID_NAME, ast)),
         NONE,
-        ast.vec_from_array([
-            expr.into(),
-            ast.expression_numeric_literal(
-                SPAN,
-                annotation.flags as f64,
-                None,
-                NumberBase::Decimal,
-            )
-            .into(),
-        ]),
+        ArenaVec::from_array_in(
+            [
+                expr.into(),
+                Expression::NumericLiteral(NumericLiteral::boxed(
+                    SPAN,
+                    annotation.flags as f64,
+                    None,
+                    NumberBase::Decimal,
+                    ast,
+                ))
+                .into(),
+            ],
+            ast,
+        ),
         false,
-    )
+        ast,
+    ))
 }
 
 fn unwrap_call_expr<'a>(expr: &mut CallExpression<'a>, ast: &mut AstBuilder<'a>) -> Expression<'a> {
-    if let Some(arg) = expr.arguments.pop() { arg.into_expression() } else { ast.void_0(SPAN) }
+    if let Some(arg) = expr.arguments.pop() {
+        arg.into_expression()
+    } else {
+        Expression::new_void_0(SPAN, ast)
+    }
 }

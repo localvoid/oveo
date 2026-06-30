@@ -77,7 +77,7 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for Statements<'a> {
             return;
         }
 
-        let mut new_statements = ctx.ast.vec_with_capacity(new_statement_count);
+        let mut new_statements = ArenaVec::with_capacity_in(new_statement_count, ctx);
 
         for stmt in statements.drain(..) {
             match modifications.remove(&stmt.address()) {

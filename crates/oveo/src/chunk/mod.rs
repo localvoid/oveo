@@ -98,14 +98,15 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                                 && is_import_meta_url(arg1)
                             {
                                 let rel_url = rel_url.value.as_str();
-                                *node = ctx.ast.expression_string_literal(
+                                *node = Expression::StringLiteral(StringLiteral::boxed(
                                     SPAN,
-                                    ctx.ast.str_from_strs_array([
-                                        base_url,
-                                        rel_url.strip_prefix("./").unwrap_or(rel_url),
-                                    ]),
+                                    Str::from_strs_array_in(
+                                        [base_url, rel_url.strip_prefix("./").unwrap_or(rel_url)],
+                                        ctx,
+                                    ),
                                     None,
-                                );
+                                    ctx,
+                                ));
                             }
                         }
                     }
@@ -160,7 +161,9 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                                         self.statements.insert_top_level_statement(
                                             stmt_const_decl(
                                                 &uid,
-                                                ctx.ast.expression_identifier(SPAN, expr.name),
+                                                Expression::Identifier(IdentifierReference::boxed(
+                                                    SPAN, expr.name, ctx,
+                                                )),
                                                 ctx,
                                             ),
                                         );
@@ -242,7 +245,7 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                                                     create_new_expr(
                                                         &uid,
                                                         callee_id,
-                                                        ctx.ast.vec(),
+                                                        ArenaVec::new_in(ctx),
                                                         ctx,
                                                     ),
                                                 );
@@ -284,7 +287,7 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                     }
                 }
             }
-            *node = ctx.ast.void_0(SPAN);
+            *node = Expression::new_void_0(SPAN, ctx);
         }
     }
 
@@ -370,18 +373,23 @@ fn stmt_const_decl<'a>(
     expr: Expression<'a>,
     ctx: &mut TraverseCtx<'a>,
 ) -> Statement<'a> {
-    Statement::VariableDeclaration(ctx.ast.alloc_variable_declaration(
+    Statement::VariableDeclaration(VariableDeclaration::boxed(
         SPAN,
         VariableDeclarationKind::Const,
-        ctx.ast.vec1(ctx.ast.variable_declarator(
-            SPAN,
-            VariableDeclarationKind::Const,
-            ctx.ast.binding_pattern_binding_identifier(SPAN, uid.name),
-            NONE,
-            Some(expr),
-            false,
-        )),
+        ArenaVec::from_value_in(
+            VariableDeclarator::new(
+                SPAN,
+                VariableDeclarationKind::Const,
+                BindingPattern::BindingIdentifier(BindingIdentifier::boxed(SPAN, uid.name, ctx)),
+                NONE,
+                Some(expr),
+                false,
+                ctx,
+            ),
+            ctx,
+        ),
         false,
+        ctx,
     ))
 }
 
@@ -394,11 +402,12 @@ fn create_static_member_decl<'a>(
 ) -> Statement<'a> {
     stmt_const_decl(
         uid,
-        Expression::StaticMemberExpression(ctx.ast.alloc_static_member_expression(
+        Expression::StaticMemberExpression(StaticMemberExpression::boxed(
             SPAN,
             object_id.create_expression(ReferenceFlags::read(), ctx),
-            ctx.ast.identifier_name(SPAN, property_name),
+            IdentifierName::new(SPAN, property_name, ctx),
             false,
+            ctx,
         )),
         ctx,
     )
@@ -413,11 +422,12 @@ fn create_new_expr<'a>(
 ) -> Statement<'a> {
     stmt_const_decl(
         uid,
-        Expression::NewExpression(ctx.ast.alloc_new_expression(
+        Expression::NewExpression(NewExpression::boxed(
             SPAN,
             callee_id.create_read_expression(ctx),
             NONE,
             arguments,
+            ctx,
         )),
         ctx,
     )
