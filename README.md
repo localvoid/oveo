@@ -36,7 +36,7 @@ export default defineConfig({
         map: 'property-map',
       },
       url: {
-        baseURL: '/assets/',
+        baseURL: '/assets/', // must end with '/'; or `url: true` to auto-detect from Vite `base`
       },
     }),
   ],
@@ -376,6 +376,15 @@ function test() {
 
 - Rollup supports [`resolveFileUrl`](https://rollupjs.org/plugin-development/#resolvefileurl) hook that can be used instead of this optimization.
 - Rolldown currently doesn't support `resolveFileUrl` hook: [issue#1010](https://github.com/rolldown/rolldown/issues/1010).
+
+Supported patterns (first argument must be a string literal or a substitution-free template literal, second argument must be `import.meta.url`):
+
+- `new URL('./asset', import.meta.url).href`
+- `new URL('./asset', import.meta.url).pathname`
+- `new URL('./asset', import.meta.url)["href"]` / `["pathname"]`
+- `new URL('./asset', import.meta.url).toString()` (zero arguments, also `["toString"]()`)
+
+Skipped (left untouched): absolute URLs (`https:…`, `data:…`), root-absolute (`/…`), query/hash-only (`?…`, `#…`), empty strings, and shadowed (non-global) `URL` constructors. `baseURL` must be non-empty and end with `'/'`. In the plugin options, `url: true` auto-detects the base from Vite `base`.
 
 ## Intrinsic Functions
 

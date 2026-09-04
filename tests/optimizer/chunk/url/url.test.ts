@@ -21,3 +21,11 @@ for (const entry of entries) {
     });
   } catch {}
 }
+
+test('chunk/url/baseURL-must-not-be-empty', () => {
+  expect(() => new Optimizer({ url: { baseURL: '' } })).toThrow();
+});
+
+test('chunk/url/baseURL-must-end-with-slash', () => {
+  expect(() => new Optimizer({ url: { baseURL: '/no-slash' } })).toThrow();
+});

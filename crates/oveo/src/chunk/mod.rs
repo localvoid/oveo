@@ -100,32 +100,83 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
     }
 
     fn enter_expression(&mut self, node: &mut Expression<'a>, ctx: &mut TraverseCtx<'a>) {
-        // Replaces `new URL("./url", import.meta.url).href` with an absolute URL.
+        // Replaces `new URL("./url", import.meta.url).href` (also `.pathname`,
+        // `["href"]` / `["pathname"]`, and zero-argument `.toString()`) with an
+        // absolute URL.
         if let Some(base_url) = &self.options.url {
-            if let Expression::StaticMemberExpression(expr) = node {
-                if expr.property.name == "href" {
-                    if let Expression::NewExpression(new_expr) = &mut expr.object {
-                        let args = &mut new_expr.arguments;
-                        if args.len() == 2 {
-                            let arg0 = &args[0];
-                            let arg1 = &args[1];
-                            if let Argument::StringLiteral(rel_url) = arg0
-                                && is_import_meta_url(arg1)
-                            {
-                                let rel_url = rel_url.value.as_str();
-                                *node = Expression::StringLiteral(StringLiteral::boxed(
-                                    SPAN,
-                                    Str::from_strs_array_in(
-                                        [base_url, rel_url.strip_prefix("./").unwrap_or(rel_url)],
-                                        ctx,
-                                    ),
-                                    None,
-                                    ctx,
-                                ));
-                            }
-                        }
+            let rel: Option<&str> = match node {
+                Expression::StaticMemberExpression(expr)
+                    if !expr.optional
+                        && (expr.property.name == "href" || expr.property.name == "pathname") =>
+                {
+                    if let Expression::NewExpression(new_expr) = &expr.object {
+                        get_new_url_rel(new_expr, ctx.scoping())
+                    } else {
+                        None
                     }
                 }
+                Expression::ComputedMemberExpression(expr) if !expr.optional => {
+                    let prop: Option<&str> = match &expr.expression {
+                        Expression::StringLiteral(s) => Some(s.value.as_str()),
+                        Expression::TemplateLiteral(t)
+                            if t.expressions.is_empty() && t.quasis.len() == 1 =>
+                        {
+                            t.quasis.first().and_then(|q| q.value.cooked.as_ref()).map(|s| {
+                                s.as_str()
+                            })
+                        }
+                        _ => None,
+                    };
+                    match prop {
+                        Some("href") | Some("pathname") => {
+                            if let Expression::NewExpression(new_expr) = &expr.object {
+                                get_new_url_rel(new_expr, ctx.scoping())
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    }
+                }
+                Expression::CallExpression(call)
+                    if !call.optional
+                        && call.type_arguments.is_none()
+                        && call.arguments.is_empty() =>
+                {
+                    let url_object: Option<&Expression<'a>> = match &call.callee {
+                        Expression::StaticMemberExpression(m)
+                            if !m.optional && m.property.name == "toString" =>
+                        {
+                            Some(&m.object)
+                        }
+                        Expression::ComputedMemberExpression(m) if !m.optional => match &m.expression
+                        {
+                            Expression::StringLiteral(s) if s.value.as_str() == "toString" => {
+                                Some(&m.object)
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+                    match url_object {
+                        Some(Expression::NewExpression(new_expr)) => {
+                            get_new_url_rel(new_expr, ctx.scoping())
+                        }
+                        _ => None,
+                    }
+                }
+                _ => None,
+            };
+            if let Some(rel_url) = rel {
+                *node = Expression::StringLiteral(StringLiteral::boxed(
+                    SPAN,
+                    Str::from_strs_array_in(
+                        [base_url, rel_url.strip_prefix("./").unwrap_or(rel_url)],
+                        ctx,
+                    ),
+                    None,
+                    ctx,
+                ));
             }
         }
 
@@ -482,13 +533,91 @@ fn create_new_expr<'a>(
     )
 }
 
-fn is_import_meta_url<'a>(expr: &Argument<'a>) -> bool {
-    if let Argument::StaticMemberExpression(url) = expr
-        && url.property.name == "url"
-    {
-        if let Expression::ImportMeta(_) = &url.object {
+fn get_new_url_rel<'a>(new_expr: &NewExpression<'a>, scoping: &Scoping) -> Option<&'a str> {
+    if new_expr.type_arguments.is_some() {
+        return None;
+    }
+    // Only rewrite the global `URL` constructor. A shadowed local `URL`
+    // (import, parameter, declaration) must keep its runtime semantics.
+    if let Expression::Identifier(callee) = &new_expr.callee {
+        if callee.name != "URL" {
+            return None;
+        }
+        if scoping.get_reference(callee.reference_id()).symbol_id().is_some() {
+            return None;
+        }
+    } else {
+        return None;
+    }
+    let args = &new_expr.arguments;
+    if args.len() != 2 {
+        return None;
+    }
+    let rel = match &args[0] {
+        Argument::StringLiteral(s) => s.value.as_str(),
+        Argument::TemplateLiteral(t) if t.expressions.is_empty() && t.quasis.len() == 1 => {
+            t.quasis.first()?.value.cooked.as_ref()?.as_str()
+        }
+        _ => return None,
+    };
+    if !is_import_meta_url(&args[1]) {
+        return None;
+    }
+    if is_non_rewritable_rel(rel) {
+        return None;
+    }
+    Some(rel)
+}
+
+/// Returns `true` when `rel` must be left alone: empty, root-absolute,
+/// query/hash-only, or an absolute URL with a scheme (`https:`, `data:`, …).
+fn is_non_rewritable_rel(rel: &str) -> bool {
+    let bytes = rel.as_bytes();
+    if bytes.is_empty() {
+        return true;
+    }
+    let first = bytes[0];
+    if first == b'/' || first == b'#' || first == b'?' || first == b'\\' {
+        return true;
+    }
+    // Scheme detection: `^[a-zA-Z][a-zA-Z0-9+.-]*:` before any `/`, `?`, `#`.
+    if !first.is_ascii_alphabetic() {
+        return false;
+    }
+    for &c in &bytes[1..] {
+        if c == b':' {
             return true;
+        }
+        if c == b'/' || c == b'?' || c == b'#' {
+            return false;
+        }
+        if !(c.is_ascii_alphanumeric() || c == b'+' || c == b'-' || c == b'.') {
+            return false;
         }
     }
     false
+}
+
+fn is_import_meta_url<'a>(expr: &Argument<'a>) -> bool {
+    match expr {
+        Argument::StaticMemberExpression(url) if url.property.name == "url" && !url.optional => {
+            matches!(&url.object, Expression::ImportMeta(_))
+        }
+        Argument::ComputedMemberExpression(url) if !url.optional => {
+            let is_url_key = match &url.expression {
+                Expression::StringLiteral(s) => s.value.as_str() == "url",
+                Expression::TemplateLiteral(t)
+                    if t.expressions.is_empty() && t.quasis.len() == 1 =>
+                {
+                    t.quasis
+                        .first()
+                        .and_then(|q| q.value.cooked.as_ref())
+                        .is_some_and(|s| s.as_str() == "url")
+                }
+                _ => false,
+            };
+            is_url_key && matches!(&url.object, Expression::ImportMeta(_))
+        }
+        _ => false,
+    }
 }

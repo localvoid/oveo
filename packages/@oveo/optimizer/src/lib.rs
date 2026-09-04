@@ -99,7 +99,23 @@ impl Optimizer {
                         _ => oveo::GlobalsOptions::default(),
                     },
                     rename_properties,
-                    url: options.url.map(|o| o.base_url),
+                    url: options
+                        .url
+                        .map(|o| {
+                            if o.base_url.is_empty() {
+                                return Err(napi::Error::from_reason(
+                                    "oveo: `url.baseURL` must not be empty",
+                                ));
+                            }
+                            if !o.base_url.ends_with('/') {
+                                return Err(napi::Error::from_reason(format!(
+                                    "oveo: `url.baseURL` must end with '/' (got {:?})",
+                                    o.base_url
+                                )));
+                            }
+                            Ok(o.base_url)
+                        })
+                        .transpose()?,
                 },
                 pattern,
             )
