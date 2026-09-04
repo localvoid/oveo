@@ -21,15 +21,15 @@ export default defineConfig({
     oveo({
       hoist: true,
       dedupe: true,
-      globals: {
-        include: ['js', 'web'],
-        hoist: true,
-        singletons: true,
-      },
+      globals: true,
+      // `globals: true` is a shorthand for everything enabled:
+      // {
+      //   include: ['js', 'console', 'web', 'electron', 'tauri'],
+      //   hoist: true,
+      //   singletons: true,
+      // }
       externs: {
-        import: [
-          /* */
-        ],
+        import: [/* */],
       },
       renameProperties: {
         pattern: '^[^_].+[^_]_$',
@@ -62,7 +62,7 @@ Alternatively, an expression can be annotated with a leading comment `/*@__HOIST
 
 ```js
 function test() {
-  const x = /*@__HOIST__*/(c) => a;
+  const x = /*@__HOIST__*/ (c) => a;
   return x;
 }
 ```

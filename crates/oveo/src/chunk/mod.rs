@@ -165,11 +165,14 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
     }
 
     fn exit_expression(&mut self, node: &mut Expression<'a>, ctx: &mut TraverseCtx<'a>) {
-        if self.options.globals.hoist {
+        if self.options.globals.hoist || self.options.globals.singletons {
             'hoist_globals: {
                 match node {
                     // Replaces global identifier with a reference to a const symbol.
                     Expression::Identifier(expr) => {
+                        if !self.options.globals.hoist {
+                            break 'hoist_globals;
+                        }
                         let reference = ctx.scoping().get_reference(expr.reference_id());
                         if reference.symbol_id().is_none() {
                             if let Some(v) =
@@ -204,6 +207,9 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                         }
                     }
                     Expression::StaticMemberExpression(expr) => {
+                        if !self.options.globals.hoist {
+                            break 'hoist_globals;
+                        }
                         if let Expression::Identifier(object_id_expr) = &expr.object {
                             // Replaces global.property with a reference to a const symbol.
                             if let Some(object_symbol_id) = ctx
@@ -251,7 +257,17 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                         }
                     }
                     // Replaces singletons `new TextEncoder()` with a reference to a const symbol.
+                    // Only zero-argument constructions are hoisted: `TextDecoder` accepts
+                    // `label`/`options` and `decode()` accepts `{ stream: true }`, so
+                    // sharing an instance constructed with arguments (or reusing one
+                    // across streaming decodes) would change semantics.
                     Expression::NewExpression(expr) => {
+                        if !self.options.globals.singletons {
+                            break 'hoist_globals;
+                        }
+                        if !expr.arguments.is_empty() || expr.type_arguments.is_some() {
+                            break 'hoist_globals;
+                        }
                         if let Expression::Identifier(object_id_expr) = &expr.callee {
                             if let Some(object_symbol_id) = ctx
                                 .scoping()

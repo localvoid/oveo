@@ -1,4 +1,4 @@
-use napi::{Env, bindgen_prelude::*};
+use napi::{Either, Env, bindgen_prelude::*};
 use napi_derive::napi;
 use oveo::PropertyMap;
 use oveo::{externs::ExternMap, optimize_chunk, optimize_module};
@@ -27,7 +27,9 @@ pub struct OptimizerOutput {
 pub struct OptimizerOptions {
     pub hoist: Option<bool>,
     pub dedupe: Option<bool>,
-    pub globals: Option<GlobalsOptions>,
+    /// `true` enables global optimization with everything turned on, i.e.
+    /// `{ include: [<all namespaces>], hoist: true, singletons: true }`.
+    pub globals: Option<Either<bool, GlobalsOptions>>,
     pub externs: Option<ExternsOptions>,
     pub rename_properties: Option<RenamePropertiesOptions>,
     pub url: Option<URLOptions>,
@@ -79,23 +81,23 @@ impl Optimizer {
                 oveo::OptimizerOptions {
                     hoist: options.hoist.unwrap_or_default(),
                     dedupe: options.dedupe.unwrap_or_default(),
-                    globals: options
-                        .globals
-                        .as_ref()
-                        .map(|v| oveo::GlobalsOptions {
-                            include: options
-                                .globals
+                    globals: match options.globals.as_ref() {
+                        Some(Either::A(true)) => oveo::GlobalsOptions {
+                            include: oveo::GlobalCategory::ALL,
+                            hoist: true,
+                            singletons: true,
+                        },
+                        Some(Either::B(v)) => oveo::GlobalsOptions {
+                            include: v
+                                .include
                                 .as_ref()
-                                .and_then(|v| {
-                                    v.include
-                                        .as_ref()
-                                        .map(|include| oveo::GlobalCategory::from(include.iter()))
-                                })
+                                .map(|include| oveo::GlobalCategory::from(include.iter()))
                                 .unwrap_or_default(),
                             hoist: v.hoist.unwrap_or_default(),
                             singletons: v.singletons.unwrap_or_default(),
-                        })
-                        .unwrap_or_default(),
+                        },
+                        _ => oveo::GlobalsOptions::default(),
+                    },
                     rename_properties,
                     url: options.url.map(|o| o.base_url),
                 },

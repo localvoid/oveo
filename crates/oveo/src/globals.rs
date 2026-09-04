@@ -1,5 +1,3 @@
-// A lot of globals in the Web API are still missing.
-// If you missing some API, submit an issue or pull request.
 use std::sync::LazyLock;
 
 use rustc_hash::FxHashMap;
@@ -47,6 +45,8 @@ impl<S: AsRef<str>, T: Iterator<Item = S>> From<T> for GlobalCategory {
                 "js" => c = c.and(Self::JS),
                 "console" => c = c.and(Self::CONSOLE),
                 "web" => c = c.and(Self::WEB),
+                "electron" => c = c.and(Self::ELECTRON),
+                "tauri" => c = c.and(Self::TAURI),
                 _ => c = c.and(Self::UNKNOWN),
             }
         }
@@ -175,6 +175,12 @@ fn add<T: Build<Output = GlobalValue>>(
 
 fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "AggregateError", object(GlobalCategory::JS));
+    // NOTE: `Array.from` / `fromAsync` / `of` do read `this` (as the result
+    // constructor), but they fall back to a plain `Array` when detached, which
+    // is identical to calling them on the base `Array` constructor. Only
+    // subclass calls (e.g. `MyArray.from`) depend on the receiver, and those
+    // never match this table. See `Promise` / Typed Arrays below for the
+    // counter-examples that had to be removed.
     add(
         g,
         "Array",
@@ -238,6 +244,7 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
             .with_static("captureStackTrace", object(GlobalCategory::JS))
             .with_static("isError", object(GlobalCategory::JS)),
     );
+    add(g, "EvalError", object(GlobalCategory::JS));
     add(g, "FinalizationRegistry", object(GlobalCategory::JS));
     add(g, "Function", object(GlobalCategory::JS));
     add(g, "Generator", object(GlobalCategory::JS));
@@ -248,7 +255,17 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
         "Intl",
         object(GlobalCategory::JS)
             .with_static("getCanonicalLocales", object(GlobalCategory::JS))
-            .with_static("supportedValuesOf", object(GlobalCategory::JS)),
+            .with_static("supportedValuesOf", object(GlobalCategory::JS))
+            .with_static("Collator", object(GlobalCategory::JS))
+            .with_static("DateTimeFormat", object(GlobalCategory::JS))
+            .with_static("DisplayNames", object(GlobalCategory::JS))
+            .with_static("DurationFormat", object(GlobalCategory::JS))
+            .with_static("ListFormat", object(GlobalCategory::JS))
+            .with_static("Locale", object(GlobalCategory::JS))
+            .with_static("NumberFormat", object(GlobalCategory::JS))
+            .with_static("PluralRules", object(GlobalCategory::JS))
+            .with_static("RelativeTimeFormat", object(GlobalCategory::JS))
+            .with_static("Segmenter", object(GlobalCategory::JS)),
     );
     add(g, "Iterator", object(GlobalCategory::JS).with_static("from", object(GlobalCategory::JS)));
     add(
@@ -368,19 +385,13 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
             .with_static("setPrototypeOf", object(GlobalCategory::JS))
             .with_static("values", object(GlobalCategory::JS)),
     );
-    add(
-        g,
-        "Promise",
-        object(GlobalCategory::JS)
-            .with_static("all", object(GlobalCategory::JS))
-            .with_static("allSettled", object(GlobalCategory::JS))
-            .with_static("any", object(GlobalCategory::JS))
-            .with_static("race", object(GlobalCategory::JS))
-            .with_static("reject", object(GlobalCategory::JS))
-            .with_static("resolve", object(GlobalCategory::JS))
-            .with_static("try", object(GlobalCategory::JS))
-            .with_static("withResolvers", object(GlobalCategory::JS)),
-    );
+    // NOTE: `Promise` statics (`all`, `race`, `resolve`, …) are intentionally not
+    // listed here. They use `this` as the promise constructor
+    // (`NewPromiseCapability(C)` throws when detached), so hoisting
+    // `Promise.all(p)` into `const _G = _P.all; _G(p)` would throw a TypeError.
+    // The bare `Promise` identifier is still hoisted; member accesses on the
+    // hoisted alias keep their receiver (`_G.all(p)`).
+    add(g, "Promise", object(GlobalCategory::JS));
     add(g, "Proxy", object(GlobalCategory::JS));
     add(g, "RangeError", object(GlobalCategory::JS));
     add(g, "ReferenceError", object(GlobalCategory::JS));
@@ -413,6 +424,7 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
             .with_static("fromCodePoint", object(GlobalCategory::JS))
             .with_static("raw", object(GlobalCategory::JS)),
     );
+    add(g, "SuppressedError", object(GlobalCategory::JS));
     add(
         g,
         "Symbol",
@@ -433,9 +445,11 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
             .with_static("split", object(GlobalCategory::JS))
             .with_static("toPrimitive", object(GlobalCategory::JS))
             .with_static("toStringTag", object(GlobalCategory::JS))
-            .with_static("unscopables", object(GlobalCategory::JS)),
+            .with_static("unscopables", object(GlobalCategory::JS))
+            .with_static("metadata", object(GlobalCategory::JS)),
     );
     add(g, "SyntaxError", object(GlobalCategory::JS));
+    add(g, "Temporal", object(GlobalCategory::JS));
     add(g, "TextDecoder", object(GlobalCategory::JS).with_func(func().singleton()));
     add(g, "TextEncoder", object(GlobalCategory::JS).with_func(func().singleton()));
     add(g, "TypeError", object(GlobalCategory::JS));
@@ -449,6 +463,8 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "decodeURIComponent", object(GlobalCategory::JS));
     add(g, "encodeURI", object(GlobalCategory::JS));
     add(g, "encodeURIComponent", object(GlobalCategory::JS));
+    add(g, "escape", object(GlobalCategory::JS));
+    add(g, "unescape", object(GlobalCategory::JS));
     add(g, "isFinite", object(GlobalCategory::JS));
     add(g, "isNaN", object(GlobalCategory::JS));
     add(g, "parseFloat", object(GlobalCategory::JS));
@@ -456,36 +472,31 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "undefined", object(GlobalCategory::JS));
 
     // Typed Arrays
+    //
+    // NOTE: `from` / `of` are intentionally not listed here. They use `this`
+    // as the element-type constructor (`const f = Uint8Array.from; f([1])`
+    // throws `TypeError: undefined is not a constructor`), so hoisting them
+    // into detached calls would break. `BYTES_PER_ELEMENT` (a data property)
+    // and `fromBase64` / `fromHex` (which ignore `this`) are safe to hoist.
     add(
         g,
         "Float16Array",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+        object(GlobalCategory::JS).with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
     );
     add(
         g,
         "Float32Array",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+        object(GlobalCategory::JS).with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
     );
     add(
         g,
         "Float64Array",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+        object(GlobalCategory::JS).with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
     );
     add(
         g,
         "Uint8Array",
         object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
             .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS))
             .with_static("fromBase64", object(GlobalCategory::JS))
             .with_static("fromHex", object(GlobalCategory::JS)),
@@ -493,66 +504,42 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(
         g,
         "Uint8ClampedArray",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+        object(GlobalCategory::JS).with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
     );
     add(
         g,
         "Uint16Array",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+        object(GlobalCategory::JS).with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
     );
     add(
         g,
         "Uint32Array",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+        object(GlobalCategory::JS).with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
     );
     add(
         g,
         "Int8Array",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+        object(GlobalCategory::JS).with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
     );
     add(
         g,
         "Int16Array",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+        object(GlobalCategory::JS).with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
     );
     add(
         g,
         "Int32Array",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+        object(GlobalCategory::JS).with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
     );
     add(
         g,
         "BigInt64Array",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+        object(GlobalCategory::JS).with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
     );
     add(
         g,
         "BigUint64Array",
-        object(GlobalCategory::JS)
-            .with_static("from", object(GlobalCategory::JS))
-            .with_static("of", object(GlobalCategory::JS))
-            .with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
+        object(GlobalCategory::JS).with_static("BYTES_PER_ELEMENT", object(GlobalCategory::JS)),
     );
 
     // Console
@@ -612,6 +599,7 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "Comment", object(GlobalCategory::WEB));
     add(g, "DOMImplementation", object(GlobalCategory::WEB));
     add(g, "DOMParser", object(GlobalCategory::WEB));
+    add(g, "XMLSerializer", object(GlobalCategory::WEB));
     add(g, "DOMTokenList", object(GlobalCategory::WEB));
     add(g, "ProcessingInstruction", object(GlobalCategory::WEB));
     add(g, "TimeRanges", object(GlobalCategory::WEB));
@@ -693,6 +681,10 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "HTMLUListElement", object(GlobalCategory::WEB));
     add(g, "HTMLUnknownElement", object(GlobalCategory::WEB));
     add(g, "HTMLVideoElement", object(GlobalCategory::WEB));
+    // Common constructors (aliases of element interfaces above)
+    add(g, "Audio", object(GlobalCategory::WEB));
+    add(g, "Image", object(GlobalCategory::WEB));
+    add(g, "Option", object(GlobalCategory::WEB));
 
     // https://developer.mozilla.org/en-US/docs/Web/API/SVG_API
     add(g, "SVGElement", object(GlobalCategory::WEB));
@@ -835,6 +827,7 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "getSelection", object(GlobalCategory::WEB));
 
     // Events
+    add(g, "Event", object(GlobalCategory::WEB));
     add(g, "EventTarget", object(GlobalCategory::WEB));
     add(g, "BeforeUnloadEvent", object(GlobalCategory::WEB));
     add(g, "CloseEvent", object(GlobalCategory::WEB));
@@ -863,9 +856,23 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
 
     add(g, "navigator", object(GlobalCategory::WEB));
     add(g, "document", object(GlobalCategory::WEB));
+    add(g, "self", object(GlobalCategory::WEB));
+    add(g, "location", object(GlobalCategory::WEB));
+    add(g, "top", object(GlobalCategory::WEB));
+    add(g, "parent", object(GlobalCategory::WEB));
+    add(g, "frames", object(GlobalCategory::WEB));
+    add(g, "screen", object(GlobalCategory::WEB));
     add(g, "structuredClone", object(GlobalCategory::WEB));
     add(g, "atob", object(GlobalCategory::WEB));
     add(g, "btoa", object(GlobalCategory::WEB));
+    add(g, "alert", object(GlobalCategory::WEB));
+    add(g, "addEventListener", object(GlobalCategory::WEB));
+    add(g, "removeEventListener", object(GlobalCategory::WEB));
+    add(g, "devicePixelRatio", object(GlobalCategory::WEB));
+    add(g, "innerWidth", object(GlobalCategory::WEB));
+    add(g, "innerHeight", object(GlobalCategory::WEB));
+    add(g, "outerWidth", object(GlobalCategory::WEB));
+    add(g, "outerHeight", object(GlobalCategory::WEB));
     add(g, "crossOriginIsolated", object(GlobalCategory::WEB));
     add(g, "customElements", object(GlobalCategory::WEB));
     add(g, "frameElement", object(GlobalCategory::WEB));
@@ -879,6 +886,9 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "clearInterval", object(GlobalCategory::WEB));
     add(g, "queueMicrotask", object(GlobalCategory::WEB));
     add(g, "performance", object(GlobalCategory::WEB));
+    add(g, "Performance", object(GlobalCategory::WEB));
+    add(g, "PerformanceEntry", object(GlobalCategory::WEB));
+    add(g, "PerformanceObserver", object(GlobalCategory::WEB));
     add(g, "open", object(GlobalCategory::WEB));
     add(g, "close", object(GlobalCategory::WEB));
     add(g, "stop", object(GlobalCategory::WEB));
@@ -911,8 +921,17 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "DragEvent", object(GlobalCategory::WEB));
 
     add(g, "AbortController", object(GlobalCategory::WEB));
-    add(g, "AbortSignal", object(GlobalCategory::WEB));
+    add(
+        g,
+        "AbortSignal",
+        object(GlobalCategory::WEB)
+            .with_static("abort", object(GlobalCategory::WEB))
+            .with_static("any", object(GlobalCategory::WEB))
+            .with_static("timeout", object(GlobalCategory::WEB)),
+    );
     add(g, "Blob", object(GlobalCategory::WEB));
+    add(g, "File", object(GlobalCategory::WEB));
+    add(g, "FileReader", object(GlobalCategory::WEB));
     add(g, "VideoFrame", object(GlobalCategory::WEB));
     add(g, "FormData", object(GlobalCategory::WEB));
     add(g, "XMLHttpRequest", object(GlobalCategory::WEB));
@@ -926,6 +945,25 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     // https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API
     add(g, "WebSocket", object(GlobalCategory::WEB));
     add(g, "WebSocketStream", object(GlobalCategory::WEB));
+    add(g, "EventSource", object(GlobalCategory::WEB));
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/WebAssembly
+    add(
+        g,
+        "WebAssembly",
+        object(GlobalCategory::WEB)
+            .with_static("compile", object(GlobalCategory::WEB))
+            .with_static("compileStreaming", object(GlobalCategory::WEB))
+            .with_static("instantiate", object(GlobalCategory::WEB))
+            .with_static("instantiateStreaming", object(GlobalCategory::WEB))
+            .with_static("validate", object(GlobalCategory::WEB))
+            .with_static("Module", object(GlobalCategory::WEB))
+            .with_static("Instance", object(GlobalCategory::WEB))
+            .with_static("Memory", object(GlobalCategory::WEB))
+            .with_static("Table", object(GlobalCategory::WEB))
+            .with_static("Global", object(GlobalCategory::WEB))
+            .with_static("Tag", object(GlobalCategory::WEB)),
+    );
 
     // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API
     add(g, "ReadableStream", object(GlobalCategory::WEB));
@@ -938,6 +976,8 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "TransformStreamDefaultController", object(GlobalCategory::WEB));
     add(g, "ByteLengthQueuingStrategy", object(GlobalCategory::WEB));
     add(g, "CountQueuingStrategy", object(GlobalCategory::WEB));
+    add(g, "CompressionStream", object(GlobalCategory::WEB));
+    add(g, "DecompressionStream", object(GlobalCategory::WEB));
     add(g, "ReadableStreamBYOBReader", object(GlobalCategory::WEB));
     add(g, "ReadableByteStreamController", object(GlobalCategory::WEB));
     add(g, "ReadableStreamBYOBRequest", object(GlobalCategory::WEB));
@@ -951,6 +991,16 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "History", object(GlobalCategory::WEB));
     add(g, "PopStateEvent", object(GlobalCategory::WEB));
     add(g, "history", object(GlobalCategory::WEB));
+    add(g, "Location", object(GlobalCategory::WEB));
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/Notifications_API
+    add(
+        g,
+        "Notification",
+        object(GlobalCategory::WEB)
+            .with_static("permission", object(GlobalCategory::WEB))
+            .with_static("requestPermission", object(GlobalCategory::WEB)),
+    );
 
     // https://developer.mozilla.org/en-US/docs/Web/API/CSS_Object_Model
     add(g, "getComputedStyle", object(GlobalCategory::WEB));
@@ -1125,6 +1175,8 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "ViewTimeline", object(GlobalCategory::WEB));
 
     // https://developer.mozilla.org/en-US/docs/Web/API/Storage_API
+    add(g, "Storage", object(GlobalCategory::WEB));
+    add(g, "StorageEvent", object(GlobalCategory::WEB));
     add(g, "StorageManager", object(GlobalCategory::WEB));
 
     // https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
@@ -1148,6 +1200,8 @@ fn add_globals_js(g: &mut FxHashMap<&'static str, GlobalValue>) {
     add(g, "PasswordCredential", object(GlobalCategory::WEB));
 
     // https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
+    add(g, "Worker", object(GlobalCategory::WEB));
+    add(g, "SharedWorker", object(GlobalCategory::WEB));
     add(g, "WorkerNavigator", object(GlobalCategory::WEB));
     add(g, "WorkerGlobalScope", object(GlobalCategory::WEB));
 
