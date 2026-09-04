@@ -1,5 +1,5 @@
 use oxc_allocator::{Address, Allocator, GetAddress, Vec as ArenaVec};
-use oxc_ast::{NONE, ast::*};
+use oxc_ast::ast::*;
 use oxc_semantic::{ReferenceFlags, Scoping, SymbolFlags, SymbolId};
 use oxc_span::SPAN;
 use oxc_traverse::{BoundIdentifier, Traverse, traverse_mut};
@@ -379,9 +379,8 @@ fn stmt_const_decl<'a>(
         ArenaVec::from_value_in(
             VariableDeclarator::new(
                 SPAN,
-                VariableDeclarationKind::Const,
                 BindingPattern::BindingIdentifier(BindingIdentifier::boxed(SPAN, uid.name, ctx)),
-                NONE,
+                None,
                 Some(expr),
                 false,
                 ctx,
@@ -425,7 +424,7 @@ fn create_new_expr<'a>(
         Expression::NewExpression(NewExpression::boxed(
             SPAN,
             callee_id.create_read_expression(ctx),
-            NONE,
+            None,
             arguments,
             ctx,
         )),
@@ -437,10 +436,7 @@ fn is_import_meta_url<'a>(expr: &Argument<'a>) -> bool {
     if let Argument::StaticMemberExpression(url) = expr
         && url.property.name == "url"
     {
-        if let Expression::MetaProperty(meta) = &url.object
-            && meta.meta.name == "import"
-            && meta.property.name == "meta"
-        {
+        if let Expression::ImportMeta(_) = &url.object {
             return true;
         }
     }

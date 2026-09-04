@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use oxc_allocator::{Address, Allocator, GetAddress, TakeIn, Vec as ArenaVec};
-use oxc_ast::{AstBuilder, NONE, ast::*};
+use oxc_ast::{ast::*, builder::AstBuilder};
 use oxc_semantic::{Scoping, SymbolFlags};
 use oxc_span::SPAN;
 use oxc_traverse::{Traverse, traverse_mut};
@@ -269,6 +269,48 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
         }
     }
 
+    fn enter_arrow_function_body(
+        &mut self,
+        node: &mut ArrowFunctionBody<'a>,
+        ctx: &mut TraverseCtx<'a>,
+    ) {
+        if matches!(node, ArrowFunctionBody::FunctionBody(_)) {
+            return;
+        }
+        if self.options.hoist {
+            // push hoist scope
+            let parent = ctx.parent();
+            if parent.is_arrow_function_expression() {
+                let address = parent.address();
+                if self.hoist_scope_expressions.remove(&address) {
+                    self.hoist_stack.push(HoistStackEntry {
+                        scope_id: ctx.current_scope_id(),
+                        kind: HoistStackEntryKind::Scope(HoistScope { current_statement: None }),
+                    });
+                    return;
+                }
+            }
+            self.hoist_stack.push(HoistStackEntry {
+                scope_id: ctx.current_scope_id(),
+                kind: HoistStackEntryKind::FunctionBody,
+            });
+        }
+    }
+
+    fn exit_arrow_function_body(
+        &mut self,
+        node: &mut ArrowFunctionBody<'a>,
+        _ctx: &mut TraverseCtx<'a>,
+    ) {
+        if matches!(node, ArrowFunctionBody::FunctionBody(_)) {
+            return;
+        }
+        if self.options.hoist {
+            // pop hoist scope
+            self.hoist_stack.pop();
+        }
+    }
+
     fn enter_function_body(&mut self, _node: &mut FunctionBody<'a>, ctx: &mut TraverseCtx<'a>) {
         if self.options.hoist {
             // push hoist scope
@@ -383,11 +425,10 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                         ArenaVec::from_value_in(
                             VariableDeclarator::new(
                                 SPAN,
-                                VariableDeclarationKind::Const,
                                 BindingPattern::BindingIdentifier(BindingIdentifier::boxed(
                                     SPAN, uid.name, ctx,
                                 )),
-                                NONE,
+                                None,
                                 Some(expr.take_in(ctx)),
                                 false,
                                 ctx,
@@ -483,7 +524,7 @@ fn annotate<'a>(
     Expression::CallExpression(CallExpression::boxed(
         SPAN,
         Expression::Identifier(IdentifierReference::boxed(SPAN, Annotation::ID_NAME, ast)),
-        NONE,
+        None,
         ArenaVec::from_array_in(
             [
                 expr.into(),

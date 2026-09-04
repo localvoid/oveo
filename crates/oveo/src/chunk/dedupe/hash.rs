@@ -50,8 +50,7 @@ fn walk_expr<'a>(
         Expression::StaticMemberExpression(node) => {
             walk_static_member_expression(state, w, node, scoping, address)
         }
-        Expression::MetaProperty(_)
-        | Expression::Super(_)
+        Expression::Super(_)
         | Expression::ArrowFunctionExpression(_)
         | Expression::AssignmentExpression(_)
         | Expression::AwaitExpression(_)
@@ -69,6 +68,8 @@ fn walk_expr<'a>(
         | Expression::UpdateExpression(_)
         | Expression::YieldExpression(_)
         | Expression::PrivateInExpression(_)
+        | Expression::ImportMeta(_)
+        | Expression::NewTarget(_)
         | Expression::JSXElement(_)
         | Expression::JSXFragment(_)
         | Expression::TSAsExpression(_)
@@ -94,11 +95,8 @@ fn walk_call_expression(
     walk_expr(state, Some(&mut h), &node.callee, scoping, node.callee.address())?;
     h.update(node.arguments.len().to_ne_bytes());
     for arg in &node.arguments {
-        if let Some(expr) = arg.as_expression() {
-            walk_expr(state, Some(&mut h), expr, scoping, expr.address())?;
-        } else {
-            return None;
-        }
+        let expr = arg.as_expression()?;
+        walk_expr(state, Some(&mut h), expr, scoping, expr.address())?;
     }
     let hash = h.finalize();
     state.add(address, hash.into());
@@ -150,7 +148,8 @@ fn walk_array_expression_element<'a>(
         | ArrayExpressionElement::StringLiteral(_)
         | ArrayExpressionElement::TemplateLiteral(_)
         | ArrayExpressionElement::Identifier(_)
-        | ArrayExpressionElement::MetaProperty(_)
+        | ArrayExpressionElement::ImportMeta(_)
+        | ArrayExpressionElement::NewTarget(_)
         | ArrayExpressionElement::Super(_)
         | ArrayExpressionElement::ArrayExpression(_)
         | ArrayExpressionElement::ArrowFunctionExpression(_)
@@ -259,8 +258,7 @@ fn walk_property_key<'a>(
             walk_template_literal(state, w, node, scoping, address)
         }
         PropertyKey::Identifier(node) => walk_identifier_reference(w, node, scoping),
-        PropertyKey::MetaProperty(_)
-        | PropertyKey::Super(_)
+        PropertyKey::Super(_)
         | PropertyKey::ArrayExpression(_)
         | PropertyKey::ArrowFunctionExpression(_)
         | PropertyKey::AssignmentExpression(_)
@@ -283,6 +281,8 @@ fn walk_property_key<'a>(
         | PropertyKey::UpdateExpression(_)
         | PropertyKey::YieldExpression(_)
         | PropertyKey::PrivateInExpression(_)
+        | PropertyKey::ImportMeta(_)
+        | PropertyKey::NewTarget(_)
         | PropertyKey::JSXElement(_)
         | PropertyKey::JSXFragment(_)
         | PropertyKey::TSAsExpression(_)
