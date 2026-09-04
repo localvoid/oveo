@@ -1,7 +1,7 @@
 use oxc_allocator::{Address, Allocator, GetAddress, Vec as ArenaVec};
 use oxc_ast::ast::*;
 use oxc_semantic::{ReferenceFlags, Scoping, SymbolFlags, SymbolId};
-use oxc_span::SPAN;
+use oxc_span::{GetSpan, SPAN};
 use oxc_traverse::{BoundIdentifier, Traverse, traverse_mut};
 use rustc_hash::FxHashMap;
 
@@ -11,6 +11,7 @@ use crate::{
     OptimizerOptions,
     annotation::Annotation,
     chunk::dedupe::{DedupeKind, DedupeState, dedupe_hash},
+    comments::{CommentAnnotation, build_comment_annotations, is_annotation_content},
     context::{TraverseCtx, TraverseCtxState},
     globals::{GlobalValue, get_global_value},
     property_names::LocalPropertyMap,
@@ -19,14 +20,22 @@ use crate::{
 
 pub fn optimize_chunk<'a, 'ctx>(
     program: &mut Program<'a>,
+    source_text: &str,
     options: &OptimizerOptions,
     property_map: LocalPropertyMap<'a, 'ctx>,
     allocator: &'a Allocator,
     scoping: Scoping,
 ) {
-    let mut optimizer = ChunkOptimizer::new(options, property_map);
+    let comment_annotations = build_comment_annotations(source_text, &program.comments);
+    let mut optimizer = ChunkOptimizer::new(options, property_map, comment_annotations);
     let scoping =
         traverse_mut(&mut optimizer, allocator, program, scoping, TraverseCtxState::default());
+    program.comments.retain(|comment| {
+        if !comment.is_leading() {
+            return true;
+        }
+        !is_annotation_content(comment.content_span().source_text(source_text))
+    });
     if options.dedupe && optimizer.dedupe.duplicates > 0 {
         let mut dedupe = Dedupe::new(optimizer.dedupe);
         traverse_mut(&mut dedupe, allocator, program, scoping, TraverseCtxState::default());
@@ -38,6 +47,7 @@ struct ChunkOptimizer<'a, 'ctx> {
     property_map: LocalPropertyMap<'a, 'ctx>,
     statements: Statements<'a>,
     annotations: Vec<AnnotatedExpr>,
+    comment_annotations: FxHashMap<u32, CommentAnnotation>,
     globals_symbols: FxHashMap<SymbolId, &'ctx GlobalValue>,
     globals_ids: FxHashMap<*const GlobalValue, BoundIdentifier<'a>>,
     singletons: FxHashMap<*const GlobalValue, BoundIdentifier<'a>>,
@@ -45,12 +55,17 @@ struct ChunkOptimizer<'a, 'ctx> {
 }
 
 impl<'a, 'ctx> ChunkOptimizer<'a, 'ctx> {
-    fn new(options: &'ctx OptimizerOptions, property_map: LocalPropertyMap<'a, 'ctx>) -> Self {
+    fn new(
+        options: &'ctx OptimizerOptions,
+        property_map: LocalPropertyMap<'a, 'ctx>,
+        comment_annotations: FxHashMap<u32, CommentAnnotation>,
+    ) -> Self {
         Self {
             options,
             property_map,
             statements: Statements::new(),
             annotations: Vec::new(),
+            comment_annotations,
             globals_symbols: FxHashMap::default(),
             globals_ids: FxHashMap::default(),
             singletons: FxHashMap::default(),
@@ -127,10 +142,24 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
                             self.annotations.push(AnnotatedExpr {
                                 address,
                                 annotation: Annotation::new(flags.value as u32),
+                                from_comment: false,
                             });
                         }
                     }
                 }
+            }
+            // Comment-based const annotation (`/*@__CONST__*/expr`).
+            if self.options.dedupe
+                && matches!(
+                    self.comment_annotations.get(&node.span().start),
+                    Some(CommentAnnotation::Const)
+                )
+            {
+                self.annotations.push(AnnotatedExpr {
+                    address,
+                    annotation: Annotation::dedupe(),
+                    from_comment: true,
+                });
             }
         }
     }
@@ -265,6 +294,10 @@ impl<'a, 'ctx> Traverse<'a, TraverseCtxState<'a>> for ChunkOptimizer<'a, 'ctx> {
         let address = node.address();
         if let Some(a) = self.annotations.pop_if(|a| a.address == address) {
             if self.options.dedupe && a.annotation.is_dedupe() {
+                if a.from_comment {
+                    let _ = dedupe_hash(&mut self.dedupe, node, ctx.scoping());
+                    return;
+                }
                 if let Expression::CallExpression(expr) = node {
                     if let Some(arg0) = expr.arguments.pop() {
                         let arg0 = arg0.into_expression();
@@ -365,6 +398,7 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for Dedupe<'a> {
 struct AnnotatedExpr {
     address: Address,
     annotation: Annotation,
+    from_comment: bool,
 }
 
 // `const uid = expr;`

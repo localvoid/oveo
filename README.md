@@ -58,7 +58,18 @@ This optimization works during module transformation phase and will try to hoist
 
 To annotate an expression, it should be passed as an argument to the [intrinsic](#intrinsic-functions) function `hoist(expr)` or any function declared in the [externs](#externs) file.
 
-By default, there is only one scope (program level scope). Scopes can be created with the [intrinsic](#intrinsic-functions) function `scope(() => {..})` or with a function declared in the [externs](#externs) file.
+Alternatively, an expression can be annotated with a leading comment `/*@__HOIST__*/expr`:
+
+```js
+function test() {
+  const x = /*@__HOIST__*/(c) => a;
+  return x;
+}
+```
+
+Comment annotations are matched by substring (block or line comments in leading position, e.g. `/* note @__HOIST__ */` also works). Annotation comments are removed from the output.
+
+By default, there is only one scope (program level scope). Scopes can be created with the [intrinsic](#intrinsic-functions) function `scope(() => {..})`, with a leading comment `/*@__SCOPE__*/(() => {..})`, or with a function declared in the [externs](#externs) file.
 
 ```json
 {
@@ -208,7 +219,7 @@ function test() {
 
 ### Expression Deduplication
 
-This optimization works during chunk rendering phase and deduplicates expressions marked with the [intrinsic](#intrinsic-functions) function `dedupe(expr)` or when expression is [hoisted](#expression-hoisting).
+This optimization works during chunk rendering phase and deduplicates expressions marked with the [intrinsic](#intrinsic-functions) function `dedupe(expr)`, with a leading comment `/*@__CONST__*/expr`, or when expression is [hoisted](#expression-hoisting).
 
 - Deduped expressions shouldn't have any side effects.
 - Deduped expressions doesn't provide referential equality (expressions from different chunks aren't deduplicated).
@@ -367,6 +378,8 @@ function test() {
 - Rolldown currently doesn't support `resolveFileUrl` hook: [issue#1010](https://github.com/rolldown/rolldown/issues/1010).
 
 ## Intrinsic Functions
+
+> **Deprecated:** prefer comment annotations (`/*@__HOIST__*/expr`, `/*@__SCOPE__*/expr`, `/*@__CONST__*/expr`). Call-expression intrinsics will be removed in the next major version.
 
 When optimizer is disabled, intrinsic functions will work as an identity function `<T>(expr: T) => expr`.
 

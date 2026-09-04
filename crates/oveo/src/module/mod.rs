@@ -3,13 +3,14 @@ use std::sync::Arc;
 use oxc_allocator::{Address, Allocator, GetAddress, TakeIn, Vec as ArenaVec};
 use oxc_ast::{ast::*, builder::AstBuilder};
 use oxc_semantic::{Scoping, SymbolFlags};
-use oxc_span::SPAN;
+use oxc_span::{GetSpan, SPAN};
 use oxc_traverse::{Traverse, traverse_mut};
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     OptimizerOptions,
     annotation::Annotation,
+    comments::{CommentAnnotation, build_comment_annotations},
     context::{TraverseCtx, TraverseCtxState},
     externs::{ExternMap, ExternValue, INTRINSICS_MODULE_NAME, IntrinsicFunction},
     module::{
@@ -27,13 +28,16 @@ mod hoist;
 
 pub fn optimize_module<'a>(
     program: &mut Program<'a>,
+    source_text: &str,
     options: &OptimizerOptions,
     externs: &ExternMap,
     allocator: &'a Allocator,
     scoping: Scoping,
 ) {
-    let mut optimizer = ModuleOptimizer::new(options, externs);
+    let comment_annotations = build_comment_annotations(source_text, &program.comments);
+    let mut optimizer = ModuleOptimizer::new(options, externs, comment_annotations);
     traverse_mut(&mut optimizer, allocator, program, scoping, TraverseCtxState::default());
+    strip_annotation_comments(program, source_text);
 }
 
 struct ModuleOptimizer<'a, 'ctx> {
@@ -46,10 +50,17 @@ struct ModuleOptimizer<'a, 'ctx> {
 
     hoist_stack: Vec<HoistStackEntry>,
     hoistable_expr_stack: Vec<HoistExpr>,
+
+    comment_annotations: FxHashMap<u32, CommentAnnotation>,
+    comment_const_addresses: FxHashSet<Address>,
 }
 
-impl<'ctx> ModuleOptimizer<'_, 'ctx> {
-    pub fn new(options: &'ctx OptimizerOptions, extern_map: &'ctx ExternMap) -> Self {
+impl<'a, 'ctx> ModuleOptimizer<'a, 'ctx> {
+    pub fn new(
+        options: &'ctx OptimizerOptions,
+        extern_map: &'ctx ExternMap,
+        comment_annotations: FxHashMap<u32, CommentAnnotation>,
+    ) -> Self {
         Self {
             options,
             statements: Statements::new(),
@@ -58,8 +69,96 @@ impl<'ctx> ModuleOptimizer<'_, 'ctx> {
             hoist_scope_expressions: FxHashSet::default(),
             hoist_stack: Vec::new(),
             hoistable_expr_stack: Vec::new(),
+            comment_annotations,
+            comment_const_addresses: FxHashSet::default(),
         }
     }
+
+    /// Shared finalization for a hoisted expression: reduces the outer
+    /// hoistable scope, optionally marks the expression for dedupe, and moves
+    /// it into a generated `const _HOISTED_` before the target statement.
+    fn finish_hoisted_expr(
+        &mut self,
+        s: HoistExpr,
+        expr: &mut Expression<'a>,
+        ctx: &mut TraverseCtx<'a>,
+    ) {
+        // Outer hoistable expr scope should be reduced to the outermost
+        // scope of the inner hoistable expr.
+        if let Some(last) = self.hoistable_expr_stack.last_mut() {
+            reduce_hoistable_scope(
+                last,
+                ctx.scoping(),
+                ctx.current_scope_id(),
+                s.outermost_scope_id,
+                &self.hoist_stack,
+            );
+        }
+        if self.options.dedupe {
+            *expr = annotate(expr.take_in(ctx), Annotation::dedupe(), &mut ctx.ast);
+        }
+        let Some(hoist_scope_id) = s.hoist_scope_id else {
+            return;
+        };
+
+        let uid = ctx.generate_uid("_HOISTED_", hoist_scope_id, SymbolFlags::ConstVariable);
+
+        // const _HOISTED_ = expr;
+        let hoisted_var_decl = Declaration::VariableDeclaration(VariableDeclaration::boxed(
+            SPAN,
+            VariableDeclarationKind::Const,
+            ArenaVec::from_value_in(
+                VariableDeclarator::new(
+                    SPAN,
+                    BindingPattern::BindingIdentifier(BindingIdentifier::boxed(
+                        SPAN, uid.name, ctx,
+                    )),
+                    None,
+                    Some(expr.take_in(ctx)),
+                    false,
+                    ctx,
+                ),
+                ctx,
+            ),
+            false,
+            ctx,
+        ));
+        *expr = uid.create_read_expression(ctx);
+
+        if let Some(scope) = self.hoist_stack.iter().find(|x| x.scope_id == hoist_scope_id) {
+            if let HoistStackEntryKind::Scope(scope) = &scope.kind {
+                if let Some(address) = scope.current_statement {
+                    self.statements.insert_before(&address, hoisted_var_decl.into());
+                }
+            }
+        }
+    }
+}
+
+fn is_hoistable_expression(expr: &Expression) -> bool {
+    matches!(
+        expr,
+        Expression::ArrowFunctionExpression(_)
+            | Expression::FunctionExpression(_)
+            | Expression::NewExpression(_)
+            | Expression::ObjectExpression(_)
+            | Expression::ArrayExpression(_)
+            | Expression::TemplateLiteral(_)
+            | Expression::TaggedTemplateExpression(_)
+            | Expression::CallExpression(_)
+    )
+}
+
+/// Removes consumed annotation comments (comments containing `@__HOIST__`,
+/// `@__SCOPE__`, or `@__CONST__`) so they don't leak into the emitted code.
+fn strip_annotation_comments(program: &mut Program, source_text: &str) {
+    use crate::comments::is_annotation_content;
+    program.comments.retain(|comment| {
+        if !comment.is_leading() {
+            return true;
+        }
+        !is_annotation_content(comment.content_span().source_text(source_text))
+    });
 }
 
 impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
@@ -186,11 +285,8 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
     fn enter_expression(&mut self, node: &mut Expression<'a>, ctx: &mut TraverseCtx<'a>) {
         match node {
             Expression::CallExpression(call_expr) => {
-                if self.options.hoist {
+                if self.options.hoist && !call_expr.arguments.is_empty() {
                     // Hoist expressions
-                    if call_expr.arguments.is_empty() {
-                        return;
-                    }
                     if let Some(ExternValue::Function(f)) =
                         self.externs.resolve(&call_expr.callee, ctx)
                     {
@@ -217,6 +313,48 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                 }
             }
             _ => {}
+        }
+
+        // Comment-based metadata (`/*@__HOIST__*/`, `/*@__SCOPE__*/`,
+        // `/*@__CONST__*/`).
+        if (self.options.hoist || self.options.dedupe)
+            && let Some(annotation) = self.comment_annotations.get(&node.span().start).copied()
+        {
+            match annotation {
+                CommentAnnotation::Scope => {
+                    if self.options.hoist
+                        && matches!(
+                            node,
+                            Expression::ArrowFunctionExpression(_)
+                                | Expression::FunctionExpression(_)
+                        )
+                    {
+                        self.hoist_scope_expressions.insert(node.address());
+                    }
+                }
+                CommentAnnotation::Hoist => {
+                    if self.options.hoist && is_hoistable_expression(node) {
+                        let root_scope_id = ctx.scoping().root_scope_id();
+                        let scope_id = ctx.current_hoist_scope_id();
+                        if root_scope_id != scope_id {
+                            self.hoistable_expr_stack.push(HoistExpr {
+                                address: node.address(),
+                                outermost_scope_id: root_scope_id,
+                                hoist_scope_id: Some(root_scope_id),
+                            });
+                            self.hoist_stack.push(HoistStackEntry {
+                                scope_id: ctx.current_scope_id(),
+                                kind: HoistStackEntryKind::HoistExpr,
+                            });
+                        }
+                    }
+                }
+                CommentAnnotation::Const => {
+                    if self.options.dedupe {
+                        self.comment_const_addresses.insert(node.address());
+                    }
+                }
+            }
         }
     }
 
@@ -267,6 +405,29 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
             }
             _ => {}
         }
+
+        // Comment-driven hoist finalization. Runs after the intrinsic match
+        // above, so a node replaced here (e.g. with the internal
+        // `__oveo__` marker) is not passed through call-expression handling.
+        if self.options.hoist {
+            let address = node.address();
+            if let Some(s) = self.hoistable_expr_stack.pop_if(|s| s.address == address) {
+                self.hoist_stack.pop();
+                self.finish_hoisted_expr(s, node, ctx);
+                return;
+            }
+        }
+
+        // Comment-driven const annotation (`/*@__CONST__*/expr` behaves like
+        // `dedupe(expr)` and is lowered to the internal `__oveo__` marker for
+        // the chunk phase).
+        {
+            let address = node.address();
+            if self.comment_const_addresses.remove(&address) && self.options.dedupe {
+                let expr = node.take_in(ctx);
+                *node = annotate(expr, Annotation::dedupe(), &mut ctx.ast);
+            }
+        }
     }
 
     fn enter_arrow_function_body(
@@ -280,7 +441,7 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
         if self.options.hoist {
             // push hoist scope
             let parent = ctx.parent();
-            if parent.is_arrow_function_expression() {
+            {
                 let address = parent.address();
                 if self.hoist_scope_expressions.remove(&address) {
                     self.hoist_stack.push(HoistStackEntry {
@@ -315,7 +476,7 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
         if self.options.hoist {
             // push hoist scope
             let parent = ctx.parent();
-            if parent.is_arrow_function_expression() {
+            {
                 let address = parent.address();
                 if self.hoist_scope_expressions.remove(&address) {
                     self.hoist_stack.push(HoistStackEntry {
@@ -356,15 +517,7 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                     let scope_id = ctx.current_hoist_scope_id();
                     if root_scope_id != scope_id {
                         if let Some(expr) = node.as_expression() {
-                            if let Expression::ArrowFunctionExpression(_)
-                            | Expression::FunctionExpression(_)
-                            | Expression::NewExpression(_)
-                            | Expression::ObjectExpression(_)
-                            | Expression::ArrayExpression(_)
-                            | Expression::TemplateLiteral(_)
-                            | Expression::TaggedTemplateExpression(_)
-                            | Expression::CallExpression(_) = expr
-                            {
+                            if is_hoistable_expression(expr) {
                                 self.hoistable_expr_stack.push(HoistExpr {
                                     address,
                                     outermost_scope_id: root_scope_id,
@@ -397,57 +550,7 @@ impl<'a> Traverse<'a, TraverseCtxState<'a>> for ModuleOptimizer<'a, '_> {
                     return;
                 };
 
-                // Outer hoistable expr scope should be reduced to the outermost
-                // scope of the inner hoistable expr.
-                if let Some(last) = self.hoistable_expr_stack.last_mut() {
-                    reduce_hoistable_scope(
-                        last,
-                        ctx.scoping(),
-                        ctx.current_scope_id(),
-                        s.outermost_scope_id,
-                        &self.hoist_stack,
-                    );
-                }
-                if self.options.dedupe {
-                    *expr = annotate(expr.take_in(ctx), Annotation::dedupe(), &mut ctx.ast);
-                }
-                let Some(hoist_scope_id) = s.hoist_scope_id else {
-                    return;
-                };
-
-                let uid = ctx.generate_uid("_HOISTED_", hoist_scope_id, SymbolFlags::ConstVariable);
-
-                // const _HOISTED_ = expr;
-                let hoisted_var_decl =
-                    Declaration::VariableDeclaration(VariableDeclaration::boxed(
-                        SPAN,
-                        VariableDeclarationKind::Const,
-                        ArenaVec::from_value_in(
-                            VariableDeclarator::new(
-                                SPAN,
-                                BindingPattern::BindingIdentifier(BindingIdentifier::boxed(
-                                    SPAN, uid.name, ctx,
-                                )),
-                                None,
-                                Some(expr.take_in(ctx)),
-                                false,
-                                ctx,
-                            ),
-                            ctx,
-                        ),
-                        false,
-                        ctx,
-                    ));
-                *expr = uid.create_read_expression(ctx);
-
-                if let Some(scope) = self.hoist_stack.iter().find(|x| x.scope_id == hoist_scope_id)
-                {
-                    if let HoistStackEntryKind::Scope(scope) = &scope.kind {
-                        if let Some(address) = scope.current_statement {
-                            self.statements.insert_before(&address, hoisted_var_decl.into());
-                        }
-                    }
-                }
+                self.finish_hoisted_expr(s, expr, ctx);
             }
         }
     }

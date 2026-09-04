@@ -12,6 +12,7 @@ pub use property_names::PropertyMap;
 
 pub mod annotation;
 pub(crate) mod chunk;
+pub mod comments;
 pub(crate) mod context;
 pub mod externs;
 pub(crate) mod globals;
@@ -81,7 +82,7 @@ pub fn optimize_module(
     }
 
     let scoping = ret.semantic.into_scoping();
-    module::optimize_module(&mut program, options, externs, &allocator, scoping);
+    module::optimize_module(&mut program, source_text, options, externs, &allocator, scoping);
 
     let result = Codegen::new()
         .with_options(CodegenOptions {
@@ -119,6 +120,7 @@ pub fn optimize_chunk(
 
     chunk::optimize_chunk(
         &mut program,
+        source_text,
         options,
         LocalPropertyMap::new(property_map),
         &allocator,
