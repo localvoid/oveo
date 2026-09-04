@@ -1,15 +1,73 @@
-[oveo](https://github.com/localvoid/oveo) is a javascript optimizer that works as a plugin for [Vite](https://vite.dev/) and [Rolldown](https://rolldown.rs/). It is written in Rust and uses [oxc](https://github.com/oxc-project/oxc/) library for parsing and semantic analysis.
+# oveo
+
+[oveo](https://github.com/localvoid/oveo) is a JavaScript optimizer that works as a plugin for [Vite](https://vite.dev/) and [Rolldown](https://rolldown.rs/). It is written in Rust and uses the [oxc](https://github.com/oxc-project/oxc/) library for parsing and semantic analysis.
+
+It shrinks and speeds up production bundles by hoisting/deduplicating repeated expressions, hoisting global lookups (`Array.isArray` → cached local), deduplicating singletons (`new TextEncoder()`), shortening property names, and rewriting `new URL(..., import.meta.url)` asset references into absolute URLs.
 
 > **Use with caution!**
 >
-> Some optimizations are making assumptions that may break your code.
+> Some optimizations make assumptions that may break your code (see [Caveats and safety](#caveats-and-safety) and the assumptions listed under each optimization). All optimizations are **disabled by default** — enable them one at a time and validate your build output.
 
-It is designed for bundlers that support hooks for transformations that work on [individual modules](https://rollupjs.org/plugin-development/#transform) and on [the final chunk or a bundle](https://rollupjs.org/plugin-development/#renderchunk).
+## Contents
 
-## Vite/Rolldown Setup
+- [When to use oveo](#when-to-use-oveo)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick setup](#quick-setup)
+  - [Vite](#vite)
+  - [Rolldown](#rolldown)
+- [Plugin options](#plugin-options)
+- [How it works](#how-it-works)
+- [Optimizations](#optimizations)
+  - [Expression Hoisting](#expression-hoisting)
+  - [Expression Deduplication](#expression-deduplication)
+  - [Hoisting Globals](#hoisting-globals)
+  - [Singletons](#singletons)
+  - [Rename Properties](#rename-properties)
+  - [Absolute URLs](#absolute-urls)
+- [Annotating expressions](#annotating-expressions)
+- [Externs](#externs)
+- [Caveats and safety](#caveats-and-safety)
+- [Troubleshooting](#troubleshooting)
+- [Development](#development)
+- [License](#license)
 
-- Add `@oveo/rolldown` package as a dev dependency to a project.
-- Add oveo plugin to the config:
+## When to use oveo
+
+Use oveo when you ship a Vite/Rolldown production build and want smaller/faster output beyond minification:
+
+- Repeated inline callbacks/objects/templates created inside components or hot functions.
+- Hot paths calling `Array.isArray`, `Object.hasOwn`, `console.*`, `fetch`, etc.
+- `new TextEncoder()` / `new TextDecoder()` scattered across chunks.
+- Libraries like [ivi](https://github.com/localvoid/ivi) that already emit hoist/dedupe annotations.
+- Projects that can enforce a property-renaming convention (e.g. trailing `_`) and asset `base`.
+
+Skip or be extra careful if you mutate globals (`Array.isArray = ...`), rely on `new TextEncoder() !== new TextEncoder()`, rely on object identity across chunks for deduped values, or cannot validate renamed properties end-to-end.
+
+## Requirements
+
+- Node.js `>= 20`
+- Vite (build mode only) or Rolldown
+- Modules processed by the `transform` step: `js`, `jsx`, `ts`, `tsx` (configurable via `filter`, see [Plugin options](#plugin-options))
+
+## Installation
+
+```sh
+npm install --save-dev @oveo/rolldown
+# pnpm add -D @oveo/rolldown
+# yarn add -D @oveo/rolldown
+# bun add -d @oveo/rolldown
+```
+
+If your code (or a library like `ivi`) uses intrinsic calls such as `hoist()` / `dedupe()`, also install the identity fallback package (no-op at runtime, real behavior comes from the optimizer):
+
+```sh
+npm install oveo
+```
+
+## Quick setup
+
+### Vite
 
 ```js
 import { defineConfig } from 'vite';
@@ -19,17 +77,35 @@ export default defineConfig({
   plugins: [
     // By default, all optimizations are disabled.
     oveo({
-      hoist: true,
       dedupe: true,
       globals: true,
+      url: true, // auto-detect base from Vite `base`
+    }),
+  ],
+});
+```
+
+Full example with every feature turned on:
+
+```js
+import { defineConfig } from 'vite';
+import { oveo } from '@oveo/rolldown';
+
+export default defineConfig({
+  base: '/assets/',
+  plugins: [
+    oveo({
+      hoist: true,
+      dedupe: true,
       // `globals: true` is a shorthand for everything enabled:
       // {
       //   include: ['js', 'console', 'web', 'electron', 'tauri'],
       //   hoist: true,
       //   singletons: true,
       // }
+      globals: true,
       externs: {
-        import: [/* */],
+        import: ['./my-custom-extern.json'],
       },
       renameProperties: {
         pattern: '^[^_].+[^_]_$',
@@ -43,6 +119,91 @@ export default defineConfig({
 });
 ```
 
+### Rolldown
+
+```js
+import { oveo } from '@oveo/rolldown';
+
+export default {
+  input: 'src/main.js',
+  output: {
+    file: 'bundle.js',
+  },
+  plugins: [
+    oveo({
+      dedupe: true,
+      globals: {
+        include: ['js', 'web'],
+        hoist: true,
+        singletons: true,
+      },
+      url: {
+        baseURL: '/assets/',
+      },
+    }),
+  ],
+};
+```
+
+See [`examples/vite`](examples/vite) for a runnable Vite setup (`vite.config.mjs`, `externs.json`, `properties.ini`).
+
+## Plugin options
+
+All fields are optional and default to disabled.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `hoist` | `boolean` | `false` | Enable [Expression Hoisting](#expression-hoisting) in `transform`. |
+| `dedupe` | `boolean` | `false` | Enable [Expression Deduplication](#expression-deduplication) in `renderChunk`. Hoisted expressions are deduped automatically. |
+| `globals` | `boolean \| { include?, hoist?, singletons? }` | disabled | `true` = all namespaces + hoist + singletons. `include` is a subset of `['js', 'console', 'web', 'electron', 'tauri']`. See [Hoisting Globals](#hoisting-globals) and [Singletons](#singletons). |
+| `externs.import` | `string[]` | `[]` | Paths/ids of [extern files](#externs) to load in `buildStart` (watched via `addWatchFile`). |
+| `externs.inlineConstValues` | `boolean` | `false` | Inline `{"type": "const", "value": ...}` exports from extern files. |
+| `renameProperties.pattern` | `string` | unset | RegExp source for property names to rename. When set, new matches are appended to the map in `writeBundle`. See [Rename Properties](#rename-properties). |
+| `renameProperties.map` | `string` | unset | Path to `key=value` property map file. Loaded in `buildStart`, updated in `writeBundle` when `pattern` is set. Watched via `addWatchFile`. |
+| `url` | `boolean \| { baseURL? }` | disabled | `false`/omitted = off. `true` or `{}` = auto-detect from Vite `base`. `{ baseURL }` = explicit base (non-empty, must end with `/`). See [Absolute URLs](#absolute-urls). |
+| `filter` | Rolldown `HookFilter` | `{ moduleType: ['js', 'jsx', 'ts', 'tsx'] }` | Which modules go through `transform`. |
+
+TypeScript shape (from `@oveo/rolldown` / `@oveo/optimizer`):
+
+```ts
+interface PluginOptions {
+  hoist?: boolean;
+  dedupe?: boolean;
+  globals?:
+    | boolean
+    | {
+        include?: Array<'js' | 'console' | 'web' | 'electron' | 'tauri'>;
+        hoist?: boolean;
+        singletons?: boolean;
+      };
+  externs?: {
+    inlineConstValues?: boolean;
+    import?: string[];
+  };
+  renameProperties?: {
+    pattern?: string;
+    map?: string;
+  };
+  url?: boolean | { baseURL?: string };
+  filter?: HookFilter;
+}
+```
+
+## How it works
+
+oveo is designed for bundlers with per-module and per-chunk hooks ([`transform`](https://rollupjs.org/plugin-development/#transform) and [`renderChunk`](https://rollupjs.org/plugin-development/#renderchunk)).
+
+| Optimization | Phase | Needs annotations? |
+| --- | --- | --- |
+| [Expression Hoisting](#expression-hoisting) | `transform` (module) | Yes (`hoist`/`scope` or comments/externs) |
+| [Expression Deduplication](#expression-deduplication) | `renderChunk` (chunk) | Yes (`dedupe`/`@__CONST__`), hoisted exprs included automatically |
+| [Hoisting Globals](#hoisting-globals) | `renderChunk` (chunk) | No (namespace allowlist) |
+| [Singletons](#singletons) | `renderChunk` (chunk) | No (`TextEncoder`/`TextDecoder` only) |
+| [Rename Properties](#rename-properties) | `transform` + `writeBundle` | No (pattern + map) |
+| [Absolute URLs](#absolute-urls) | `renderChunk` (chunk) | No (`new URL(..., import.meta.url)` patterns) |
+
+Sourcemaps are preserved (`transform`/`renderChunk` return `{ code, map }`). Transform failures report `Unable to transform module '<id>'`; chunk failures report `Unable to optimize chunk file`.
+
 ## Optimizations
 
 - [Expression Hoisting](#expression-hoisting)
@@ -54,11 +215,9 @@ export default defineConfig({
 
 ### Expression Hoisting
 
-This optimization works during module transformation phase and will try to hoist annotated expressions to the outermost valid scope.
+Works during module transformation. Tries to hoist annotated expressions to the outermost valid scope.
 
-To annotate an expression, it should be passed as an argument to the [intrinsic](#intrinsic-functions) function `hoist(expr)` or any function declared in the [externs](#externs) file.
-
-Alternatively, an expression can be annotated with a leading comment `/*@__HOIST__*/expr`:
+Annotate with comment `/*@__HOIST__*/expr` (preferred) or intrinsic `hoist(expr)` (see [Annotating expressions](#annotating-expressions)):
 
 ```js
 function test() {
@@ -69,7 +228,7 @@ function test() {
 
 Comment annotations are matched by substring (block or line comments in leading position, e.g. `/* note @__HOIST__ */` also works). Annotation comments are removed from the output.
 
-By default, there is only one scope (program level scope). Scopes can be created with the [intrinsic](#intrinsic-functions) function `scope(() => {..})`, with a leading comment `/*@__SCOPE__*/(() => {..})`, or with a function declared in the [externs](#externs) file.
+By default there is only one scope (program-level scope). Create scopes with `/*@__SCOPE__*/(() => {..})` (or `scope(() => {..})`), or with a function declared in the [externs](#externs) file.
 
 ```json
 {
@@ -86,7 +245,7 @@ By default, there is only one scope (program level scope). Scopes can be created
 }
 ```
 
-In this [externs](#externs) example we are describing a module `@scope/modulename` that has two functions with an additional behavior: `myscope(() => {..})` and `myfunc(any, hoistable_expr)`. The first argument in the `myscope` function will behave as an expression that creates a new hoist scope. The second argument in the `myfunc` function will be hoisted to the outermost valid scope.
+In this [externs](#externs) example we describe module `@scope/modulename` with two functions: `myscope(() => {..})` and `myfunc(any, hoistable_expr)`. The first argument of `myscope` behaves as an expression that creates a new hoist scope. The second argument of `myfunc` is hoisted to the outermost valid scope.
 
 ```js
 import { myscope, myfunc } from '@scope/modulename';
@@ -160,7 +319,7 @@ const Button = component((c) => {
 
 Terminology:
 
-- "Hoist Scope" - scope that can contain Hoisted Expressions. By default, there is only a program level scope. Additional scopes can be created with the intrinsic function `scope()`.
+- "Hoist Scope" - scope that can contain Hoisted Expressions. By default, there is only a program level scope. Additional scopes can be created with `/*@__SCOPE__*/`.
 - "Hoisted Expression" - expression that should be hoisted to the outermost Hoist Scope.
 - "Hoisted Expression Scope" - scopes created inside of a hoisted expression.
 - "Inner Scope" - the closest Hoist Scope.
@@ -206,23 +365,12 @@ Hoisting heuristics are quite conservative:
   - `SwitchStatement` - `switch (v) { }`
 - Expressions hoisted to the Inner Scope should be inside of a function scope.
 
-To prevent an expression from hoisting, it should be wrapped in `ParenthesizedExpression`, e.g.:
-
-```js
-import { hoist } from 'oveo';
-
-const a = 1;
-function test() {
-  hoist(() => a);
-}
-```
-
 ### Expression Deduplication
 
-This optimization works during chunk rendering phase and deduplicates expressions marked with the [intrinsic](#intrinsic-functions) function `dedupe(expr)`, with a leading comment `/*@__CONST__*/expr`, or when expression is [hoisted](#expression-hoisting).
+Works during chunk rendering. Deduplicates expressions marked with `/*@__CONST__*/expr` (or `dedupe(expr)`), or expressions already [hoisted](#expression-hoisting).
 
 - Deduped expressions shouldn't have any side effects.
-- Deduped expressions doesn't provide referential equality (expressions from different chunks aren't deduplicated).
+- Deduped expressions don't provide referential equality across chunks (dedup is chunk-local).
 
 ```js
 import { dedupe } from 'oveo';
@@ -273,9 +421,9 @@ const arr1 = _DEDUPE_;
 
 ### Hoisting Globals
 
-This optimization works dunring chunk rendering phase and hoists global values and their static properties.
+Works during chunk rendering. Hoists global values and their static properties.
 
-It hoists only predefined [globals](https://github.com/localvoid/oveo/blob/master/crates/oveo/src/globals.rs) with an assumption that they aren't mutated.
+It hoists only predefined [globals](crates/oveo/src/globals.rs) with an assumption that they aren't mutated.
 
 ```js
 function isArray(data) {
@@ -308,17 +456,29 @@ function from(data) {
 }
 ```
 
+Configure with `globals: true` (all of `['js', 'console', 'web', 'electron', 'tauri']` + `hoist` + `singletons`) or granularly:
+
+```js
+oveo({
+  globals: {
+    include: ['js', 'web'],
+    hoist: true,
+    singletons: true,
+  },
+});
+```
+
 ### Singletons
 
-This optimization works during chunk rendering phase and deduplicates objects like `new TextEncoder()` with an assumption that there are no mutations to this objects and this objects will be referential equal when they are referenced in the chunk file.
+Works during chunk rendering. Deduplicates objects like `new TextEncoder()` with an assumption that there are no mutations to these objects and that these objects are referentially equal when referenced in the chunk file.
 
-Currently, there are only two singleton objects: `new TextEncoder()` and `new TextDecoder()`.
+Currently only two singletons: `new TextEncoder()` and `new TextDecoder()`. Enabled via `globals: true` or `globals: { singletons: true }`.
 
 ### Rename Properties
 
-This optimization works during chunk transformation phase and renames property names that match a regexp pattern or properties from a property map.
+Works during chunk transformation. Renames property names matching a RegExp pattern or listed in a property map.
 
-When bundler finishes building all chunks, it will add new properties matching regexp pattern to a property map.
+When bundler finishes building all chunks, it adds new properties matching the RegExp pattern to the property map.
 
 Property map has a simple `key=value` format:
 
@@ -328,10 +488,10 @@ right_=b
 status_=c
 ```
 
-Path to a property map file is specified in the oveo plugin options:
+Path to the property map file is specified in the oveo plugin options:
 
 ```js
-import { oveo } from '@oveo/vite';
+import { oveo } from '@oveo/rolldown';
 
 export default {
   input: 'src/main.js',
@@ -349,16 +509,27 @@ export default {
 };
 ```
 
+Workflow:
+
+1. First build with `pattern` + `map`: matching properties are renamed and the map file is created/updated in `writeBundle`.
+2. Commit the map file. Subsequent builds reuse stable short names.
+3. To rename-only (no new names), set `map` without `pattern`.
+
+To mark a single string literal as a property name, use `key('prop_')` (see [Annotating expressions](#annotating-expressions)).
+
 Some minifiers support a similar optimization:
 
 - [Terser - Mangle Properties Options](https://terser.org/docs/options/#mangle-properties-options)
 - [esbuild - Mangle props](https://esbuild.github.io/api/#mangle-props)
+- [oxc](https://oxc.rs/docs/guide/usage/minifier/mangling.html)
+
+Since oxc recently added support for property mangling, this optimization will be removed in the future versions.
 
 ### Absolute URLs
 
-By default, when Rollup and Rolldown generates URLs to different assets, it generates relative URLs like this `new URL("./asset", import.meta.url).href`.
+By default, when Rollup and Rolldown generate URLs to different assets, they generate relative URLs like `new URL("./asset", import.meta.url).href`.
 
-This optimization rewrites relative URLs into an absolute URL, e.g.:
+This optimization rewrites relative URLs into absolute URLs, e.g.:
 
 ```js
 function test() {
@@ -384,17 +555,22 @@ Supported patterns (first argument must be a string literal or a substitution-fr
 - `new URL('./asset', import.meta.url)["href"]` / `["pathname"]`
 - `new URL('./asset', import.meta.url).toString()` (zero arguments, also `["toString"]()`)
 
-Skipped (left untouched): absolute URLs (`https:…`, `data:…`), root-absolute (`/…`), query/hash-only (`?…`, `#…`), empty strings, and shadowed (non-global) `URL` constructors. `baseURL` must be non-empty and end with `'/'`. In the plugin options, `url: true` auto-detects the base from Vite `base`.
+Skipped (left untouched): absolute URLs (`https:…`, `data:…`), root-absolute (`/…`), query/hash-only (`?…`, `#…`), empty strings, and shadowed (non-global) `URL` constructors. `baseURL` must be non-empty and end with `'/'`. In plugin options, `url: true` auto-detects the base from Vite `base`.
 
-## Intrinsic Functions
+## Annotating expressions
 
-> **Deprecated:** prefer comment annotations (`/*@__HOIST__*/expr`, `/*@__SCOPE__*/expr`, `/*@__CONST__*/expr`). Call-expression intrinsics will be removed in the next major version.
+| Goal | Comment (preferred) | Intrinsic (from `oveo`) |
+| --- | --- | --- |
+| Hoist to outer [hoisting scope](#expression-hoisting) | `/*@__HOIST__*/expr` | `hoist(expr)` |
+| Create hoisting scope | `/*@__SCOPE__*/(() => {..})` | `scope(() => {..})` |
+| Deduplicate | `/*@__CONST__*/expr` | `dedupe(expr)` |
+| Rename string as property | — | `key(string_literal)` |
 
-When optimizer is disabled, intrinsic functions will work as an identity function `<T>(expr: T) => expr`.
+When the optimizer is disabled, intrinsic functions work as identity functions `<T>(expr: T) => expr`.
 
 #### `hoist(expr)`
 
-Hoists expression to the outermost valid [hoisting scope](#scope----).
+Hoists expression to the outermost valid [hoisting scope](#expression-hoisting).
 
 #### `scope(() => { .. })`
 
@@ -410,10 +586,10 @@ Renames string literal as a property name.
 
 ## Externs
 
-Extern files are specified in the oveo plugin options:
+Extern files describe third-party modules so oveo can treat their functions as hoist/scope annotations, or inline constants — without changing that library's source. Paths are specified in plugin options:
 
 ```js
-import { oveo } from '@oveo/vite';
+import { oveo } from '@oveo/rolldown';
 
 export default {
   input: 'src/main.js',
@@ -451,3 +627,42 @@ Extern file example:
   }
 }
 ```
+
+Supported export descriptors:
+
+- `{ "type": "function", "arguments": [{ "hoist"?: true, "scope"?: true }] }` — per-argument hoist/scope behavior.
+- `{ "type": "const", "value": ... }` — inline constant (requires `externs: { inlineConstValues: true }`). Example in [`examples/vite/externs.json`](examples/vite/externs.json).
+
+## Caveats and safety
+
+- **Globals:** assumes globals and their static properties are never reassigned/monkey-patched. Don't enable `globals.hoist` if you (or a dependency) mutate `Array`, `Object`, `console`, `window`, etc. Limit `include` to namespaces you control (e.g. `['js']`).
+- **Singletons:** assumes `new TextEncoder()` / `new TextDecoder()` instances are never mutated and can share identity within a chunk.
+- **Dedupe:** only for side-effect-free expressions; equality is chunk-local, not cross-chunk.
+- **Hoist:** heuristic is conservative (see [Hoisting Heuristics](#expression-hoisting)); symbols must be reachable from the hoist scope, no conditionals on the hoist path. Opt out with extra parens (`hoist((() => a))` stays put).
+- **Rename properties:** irreversible across builds without the map file — commit `renameProperties.map`, review new entries, and avoid overly broad `pattern` regexes.
+- **URLs:** only the patterns listed in [Absolute URLs](#absolute-urls) are rewritten; `base` / `baseURL` (must end with `/`). Relative `./` Vite `base` disables auto-detection with a warning.
+
+## Troubleshooting
+
+- `oveo: url.baseURL must end with '/'` — append trailing slash or use `url: true` with a proper Vite `base` (not `'./'` or `''`).
+- ``oveo: ignoring unsupported Vite `base` ...`` — auto-detection disabled; set `url: { baseURL: '/...' }` explicitly.
+- `Unable to read property map file` — normal on first build when `pattern` is set and the file doesn't exist yet; it will be created in `writeBundle`. Without `pattern`, ensure the path exists.
+- `Invalid property map file` / `Unable to import extern file` — check `key=value` format and that extern paths resolve (they go through Rolldown `resolve` + `addWatchFile`).
+- Nothing happens — remember all optimizations default to off; set at least `dedupe: true` or `globals: true`. Also check `filter` covers your `moduleType` and that Vite runs in build mode (`apply: 'build'` means `vite dev` is untouched).
+
+## Development
+
+```sh
+bun install
+bun run napi-build   # napi build
+bun run build        # tsc -b
+bun run test         # bun test ./tests/
+bun run format       # oxfmt
+bun run check        # oxlint
+```
+
+NAPI binding lives in `packages/@oveo/optimizer` (`bun run napi-build`). JS plugin lives in `packages/@oveo/rolldown/src/index.ts`. Intrinsics live in `packages/oveo`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

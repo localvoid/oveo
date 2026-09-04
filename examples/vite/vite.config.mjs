@@ -1,4 +1,4 @@
-import { oveo } from '@oveo/vite';
+import { oveo } from '@oveo/rolldown';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
