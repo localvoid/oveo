@@ -15,7 +15,7 @@ on:
           - major
 jobs:
   publish:
-    name: Release new @oveo/optimizer version
+    name: Release new @oveo/optimizer and @oveo/rolldown versions
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -28,5 +28,5 @@ jobs:
           ./scripts/increment-versions.sh ${{ github.event.inputs.increment }}
           git config --global user.name "GitHub Action"
           git config --global user.email "username@users.noreply.github.com"
-          git commit -a -m "publish: optimizer $(jq -r .version ./packages/@oveo/optimizer/package.json)"
+          git commit -a -m "publish: optimizer $(jq -r .version ./packages/@oveo/optimizer/package.json), rolldown $(jq -r .version ./packages/@oveo/rolldown/package.json)"
           git push
