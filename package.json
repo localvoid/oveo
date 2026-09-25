@@ -13,13 +13,13 @@
     "napi-build": "napi build --platform --esm --manifest-path ./packages/@oveo/optimizer/Cargo.toml --package-json-path ./packages/@oveo/optimizer/package.json --output-dir ./packages/@oveo/optimizer"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^3.9.1",
+    "@napi-rs/cli": "^3.10.5",
     "@types/bun": "^1.4.2",
-    "@types/node": "^26.5.1",
-    "oxfmt": "^0.68.0",
-    "oxlint": "^1.83.0",
-    "oxlint-tsgolint": "^7.0.2001",
-    "rolldown": "^1.2.8",
+    "@types/node": "^26.6.2",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2002",
+    "rolldown": "^1.2.9",
     "typescript": "^7.0.2"
   }
 }
